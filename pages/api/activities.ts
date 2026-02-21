@@ -135,11 +135,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'id is required' })
       }
 
-      await prisma.activity.delete({
-        where: { id: String(id) }
+      const activityId = String(id)
+
+      // First, delete all events referencing this activity (cascade effect on scoring)
+      const deletedEvents = await prisma.event.deleteMany({
+        where: { activityId }
       })
 
-      return res.status(200).json({ success: true })
+      // Then delete the activity itself
+      await prisma.activity.delete({
+        where: { id: activityId }
+      })
+
+      return res.status(200).json({
+        success: true,
+        cascaded: { eventsDeleted: deletedEvents.count }
+      })
     } catch (error: any) {
       console.error('DELETE /api/activities error:', error)
       return res.status(500).json({ error: error.message })

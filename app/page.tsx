@@ -43,6 +43,7 @@ export default function HomePage() {
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(false)
   const [completing, setCompleting] = useState<string | null>(null)
+  const [reverting, setReverting] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null)
 
   const sessionUser = session?.user as any
@@ -141,6 +142,27 @@ export default function HomePage() {
   function showToastMessage(msg: string, emoji: string) {
     setToast({ msg, emoji })
     setTimeout(() => setToast(null), 2500)
+  }
+
+  async function revertEvent(eventId: string, activityName: string, points: number) {
+    if (!confirm(`Undo "${activityName}"?\n\nThis will remove ${points} points and mark it as not done.`)) return
+
+    setReverting(eventId)
+    try {
+      const res = await fetch(`/api/events?id=${eventId}`, { method: 'DELETE' })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to revert')
+      }
+
+      await loadData()
+      showToastMessage(`Reverted! -${points} points`, '↩️')
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setReverting(null)
+    }
   }
 
   function isActivityCompletedToday(activityId: string): boolean {
@@ -421,6 +443,8 @@ export default function HomePage() {
               {todayActivities.map(activity => {
                 const isCompleted = isActivityCompletedToday(activity.id)
                 const isProcessing = completing === activity.id
+                const completionEvent = events.find(e => e.activityId === activity.id)
+                const isRevertingThis = completionEvent ? reverting === completionEvent.id : false
 
                 return (
                   <div key={activity.id}
@@ -431,7 +455,7 @@ export default function HomePage() {
                       padding: 'clamp(16px, 4vw, 24px)',
                       cursor: isCompleted ? 'default' : 'pointer',
                       transition: 'all 0.2s',
-                      opacity: isProcessing ? 0.6 : 1,
+                      opacity: isProcessing || isRevertingThis ? 0.6 : 1,
                       position: 'relative', overflow: 'hidden',
                       minHeight: '44px',
                       WebkitTapHighlightColor: 'transparent',
@@ -449,7 +473,31 @@ export default function HomePage() {
                       e.currentTarget.style.boxShadow = isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.06)'
                     }}
                   >
-                    {isCompleted && (
+                    {isCompleted && completionEvent && (
+                      <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <div style={{ background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
+                          ✓ DONE
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            revertEvent(completionEvent.id, activity.name, completionEvent.points)
+                          }}
+                          disabled={isRevertingThis}
+                          style={{
+                            background: '#FEF3C7', color: '#92400E', padding: '4px 10px',
+                            borderRadius: '20px', fontSize: '11px', fontWeight: '800',
+                            border: '1px solid #FCD34D', cursor: 'pointer',
+                            opacity: isRevertingThis ? 0.5 : 1,
+                            WebkitTapHighlightColor: 'transparent'
+                          }}
+                          title="Undo this completion"
+                        >
+                          {isRevertingThis ? '⏳' : '↩️ Undo'}
+                        </button>
+                      </div>
+                    )}
+                    {isCompleted && !completionEvent && (
                       <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
                         ✓ DONE
                       </div>
@@ -501,6 +549,27 @@ export default function HomePage() {
                     <div style={{ fontWeight: '800', color: '#10B981', fontSize: 'clamp(14px, 3.5vw, 16px)', flexShrink: 0 }}>
                       +{event.points} ⭐
                     </div>
+                    <button
+                      onClick={() => revertEvent(event.id, event.activity?.name || 'Activity', event.points)}
+                      disabled={reverting === event.id}
+                      style={{
+                        padding: '6px 12px',
+                        minHeight: '32px',
+                        background: reverting === event.id ? '#E5E7EB' : '#FEF3C7',
+                        border: '1px solid #FCD34D',
+                        borderRadius: '8px',
+                        fontSize: 'clamp(11px, 2.5vw, 12px)',
+                        fontWeight: '700',
+                        cursor: reverting === event.id ? 'not-allowed' : 'pointer',
+                        color: '#92400E',
+                        flexShrink: 0,
+                        opacity: reverting === event.id ? 0.5 : 1,
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                      title="Undo this action"
+                    >
+                      {reverting === event.id ? '⏳' : '↩️ Undo'}
+                    </button>
                   </div>
                 ))}
               </div>

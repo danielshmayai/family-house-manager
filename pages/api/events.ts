@@ -102,6 +102,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.json(events)
     }
 
+    if (req.method === 'DELETE') {
+      const { id } = req.query
+
+      if (!id) {
+        return res.status(400).json({ error: 'id is required' })
+      }
+
+      const eventId = String(id)
+
+      // Find the event first to return info about what was reverted
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        include: {
+          activity: { select: { id: true, name: true, icon: true, defaultPoints: true } },
+          recordedBy: { select: { id: true, name: true } }
+        }
+      })
+
+      if (!event) {
+        return res.status(404).json({ error: 'Event not found' })
+      }
+
+      // Delete the event — this automatically reverts scoring since
+      // leaderboard/points are computed dynamically from events
+      await prisma.event.delete({ where: { id: eventId } })
+
+      return res.json({
+        success: true,
+        reverted: {
+          eventId: event.id,
+          activityName: event.activity?.name || event.eventType,
+          pointsReverted: event.points,
+          user: event.recordedBy?.name || event.recordedById
+        }
+      })
+    }
+
     res.status(405).end()
   }catch(e){
     console.error(e)

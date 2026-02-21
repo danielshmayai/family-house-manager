@@ -97,11 +97,21 @@ export default function Admin() {
   }
 
   async function deleteCategory(id: string) {
-    if (!confirm('Delete this category and all its activities?')) return
+    const cat = categories.find(c => c.id === id)
+    const actCount = cat?.activities?.length || 0
+    const msg = actCount > 0
+      ? `Delete "${cat?.name}" category?\n\nThis will also delete:\n• ${actCount} activit${actCount === 1 ? 'y' : 'ies'}\n• All related completion events & points\n\nThis action CANNOT be undone!`
+      : `Delete "${cat?.name}" category?\n\nThis action CANNOT be undone!`
+    if (!confirm(msg)) return
 
     try {
       const res = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete')
+      const result = await res.json()
+      const info = result.cascaded
+        ? `Deleted! (${result.cascaded.activitiesDeleted} activities, ${result.cascaded.eventsDeleted} events removed)`
+        : 'Deleted!'
+      alert(info)
       await loadCategories()
     } catch (err: any) {
       alert('Error: ' + err.message)
@@ -135,11 +145,18 @@ export default function Admin() {
   }
 
   async function deleteActivity(id: string) {
-    if (!confirm('Delete this activity?')) return
+    const activity = categories.flatMap(c => c.activities || []).find(a => a.id === id)
+    const msg = `Delete "${activity?.name}" activity?\n\nThis will also delete all related completion events & points.\n\nThis action CANNOT be undone!`
+    if (!confirm(msg)) return
 
     try {
       const res = await fetch(`/api/activities?id=${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete')
+      const result = await res.json()
+      const info = result.cascaded
+        ? `Deleted! (${result.cascaded.eventsDeleted} events removed)`
+        : 'Deleted!'
+      alert(info)
       await loadCategories()
     } catch (err: any) {
       alert('Error: ' + err.message)

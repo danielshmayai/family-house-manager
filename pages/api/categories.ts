@@ -82,8 +82,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'DELETE'){
       const id = req.query.id
       if (!id) return res.status(400).json({ error: 'missing id' })
-      await prisma.category.delete({ where: { id: String(id) } })
-      return res.json({ ok: true })
+
+      const categoryId = String(id)
+
+      // Find all activities in this category
+      const activities = await prisma.activity.findMany({
+        where: { categoryId },
+        select: { id: true }
+      })
+      const activityIds = activities.map(a => a.id)
+
+      // Delete all events referencing these activities (cascade effect on scoring)
+      let eventsDeleted = 0
+      if (activityIds.length > 0) {
+        const result = await prisma.event.deleteMany({
+          where: { activityId: { in: activityIds } }
+        })
+        eventsDeleted = result.count
+      }
+
+      // Delete all activities in this category
+      const activitiesResult = await prisma.activity.deleteMany({
+        where: { categoryId }
+      })
+
+      // Delete the category
+      await prisma.category.delete({ where: { id: categoryId } })
+
+      return res.json({
+        ok: true,
+        cascaded: {
+          activitiesDeleted: activitiesResult.count,
+          eventsDeleted
+        }
+      })
     }
 
     res.status(405).end()
