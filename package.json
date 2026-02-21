@@ -1,0 +1,41 @@
+{
+  "name": "family-house-manager",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:generate": "prisma generate",
+    "prisma:reset": "prisma migrate reset",
+    "seed": "tsx prisma/seed.ts",
+    "seed:modular": "tsx prisma/seed-modular.ts",
+    "setup": "npm install && prisma migrate dev && npm run seed:modular"
+  },
+  "dependencies": {
+    "@prisma/client": "5.8.0",
+    "bcryptjs": "2.4.3",
+    "clsx": "2.1.0",
+    "date-fns": "3.0.6",
+    "next": "14.0.4",
+    "next-auth": "4.24.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "swr": "2.2.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.10.6",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
+    "@types/uuid": "^10.0.0",
+    "eslint": "8.56.0",
+    "eslint-config-next": "14.0.4",
+    "playwright": "^1.57.0",
+    "prisma": "5.8.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.3.3"
+  }
+}

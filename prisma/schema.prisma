@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  householdId  String?
+  household    Household? @relation(fields: [householdId], references: [id])
+  role         String    @default("MEMBER")
+  events       Event[]
+  createdAt    DateTime  @default(now())
+}
+
+model Household {
+  id         String     @id @default(cuid())
+  name       String
+  members    User[]
+  invites    Invite[]
+  events     Event[]
+  categories Category[]
+  createdAt  DateTime   @default(now())
+}
+
+model Invite {
+  id          String   @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id])
+  householdId String
+  code        String   @unique
+  createdById String
+  expiresAt   DateTime?
+  usedById    String?
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  position    Int        @default(0)
+  isActive    Boolean    @default(true)
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id])
+  activities  Activity[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Activity {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  categoryId     String
+  category       Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  icon           String?
+  defaultPoints  Int       @default(10)
+  frequency      String    @default("DAILY")
+  position       Int       @default(0)
+  isActive       Boolean   @default(true)
+  requiresNote   Boolean   @default(false)
+  requiresPhoto  Boolean   @default(false)
+  config         String?
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  events         Event[]
+}
+
+// Keep Task model for backwards compatibility, can be removed later
+model Task {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  categoryId     String?
+  name           String
+  description    String?
+  defaultPoints  Int
+  frequency      String
+  eligibility    String?
+  penaltyRules   String?
+  createdById    String
+  createdAt      DateTime @default(now())
+}
+
+model Event {
+  id              String    @id @default(cuid())
+  eventType       String
+  occurredAt      DateTime  @default(now())
+  recordedById    String
+  recordedBy      User      @relation(fields: [recordedById], references: [id])
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  taskId          String?
+  activityId      String?
+  activity        Activity? @relation(fields: [activityId], references: [id])
+  points          Int       @default(0)
+  metadata        String?
+}
+
+model BugReport {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  reportedBy  String?
+  createdAt   DateTime @default(now())
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+}
