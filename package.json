@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:generate": "prisma generate",
     "prisma:reset": "prisma migrate reset",
+    "prisma:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "seed:modular": "tsx prisma/seed-modular.ts",
+    "seed:finance": "tsx prisma/seed-finance.ts",
     "setup": "npm install && prisma migrate dev && npm run seed:modular"
   },
   "dependencies": {
