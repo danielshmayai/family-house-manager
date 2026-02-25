@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  passwordHash    String
+  role            String           @default("MEMBER")
+  language        String           @default("he")
+  theme           String           @default("light")
+  otpSecret       String?
+  otpEnabled      Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  financialAssets FinancialAsset[]
+  financialGoals  FinancialGoal[]
+  notifications   Notification[]
+  assetSnapshots  AssetSnapshot[]
+}
+
+// Asset types:
+// INVESTMENT    - stocks, ETFs, mutual funds
+// SAVINGS       - deposits, savings accounts
+// PENSION       - pension fund
+// PROVIDENT     - provident fund (קופת גמל)
+// STUDY_FUND    - study fund (קרן השתלמות)
+// CHECKING      - checking account
+
+model FinancialAsset {
+  id                   String          @id @default(cuid())
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                 String
+  name                 String
+  institution          String
+  accountNumber        String?
+  currency             String          @default("ILS")
+  currentValue         Float           @default(0)
+  ticker               String?
+  quantity             Float?
+  purchasePrice        Float?
+  purchaseDate         DateTime?
+  interestRate         Float?
+  maturityDate         DateTime?
+  monthlyDeposit       Float?
+  employerContribution Float?
+  expectedReturnRate   Float?
+  bankCode             String?
+  branchCode           String?
+  notes                String?
+  isActive             Boolean         @default(true)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  snapshots            AssetSnapshot[]
+}
+
+model AssetSnapshot {
+  id        String         @id @default(cuid())
+  assetId   String
+  asset     FinancialAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value     Float
+  date      DateTime
+  createdAt DateTime       @default(now())
+}
+
+model FinancialGoal {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  targetDate    DateTime?
+  category      String?
+  notes         String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  titleHe   String?
+  message   String
+  messageHe String?
+  isRead    Boolean  @default(false)
+  metadata  String?
+  createdAt DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
