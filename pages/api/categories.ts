@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { categoryId },
         select: { id: true }
       })
-      const activityIds = activities.map(a => a.id)
+      const activityIds = activities.map((a: { id: string }) => a.id)
 
       // Delete all events referencing these activities (cascade effect on scoring)
       let eventsDeleted = 0
