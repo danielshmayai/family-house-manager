@@ -17,17 +17,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json()
   const prevValue = asset.currentValue
 
+  // Explicitly pick only user-editable fields — never allow overwriting id, userId, createdAt
   const updated = await prisma.financialAsset.update({
     where: { id: params.id },
     data: {
-      ...body,
-      currentValue: body.currentValue ? parseFloat(body.currentValue) : asset.currentValue,
-      interestRate: body.interestRate ? parseFloat(body.interestRate) : asset.interestRate,
-      monthlyDeposit: body.monthlyDeposit ? parseFloat(body.monthlyDeposit) : asset.monthlyDeposit,
-      employerContribution: body.employerContribution ? parseFloat(body.employerContribution) : asset.employerContribution,
-      expectedReturnRate: body.expectedReturnRate ? parseFloat(body.expectedReturnRate) : asset.expectedReturnRate,
-      quantity: body.quantity ? parseFloat(body.quantity) : asset.quantity,
-      purchasePrice: body.purchasePrice ? parseFloat(body.purchasePrice) : asset.purchasePrice,
+      name: body.name ?? asset.name,
+      institution: body.institution ?? asset.institution,
+      accountNumber: body.accountNumber ?? asset.accountNumber,
+      notes: body.notes ?? asset.notes,
+      ticker: body.ticker ?? asset.ticker,
+      bankCode: body.bankCode ?? asset.bankCode,
+      branchCode: body.branchCode ?? asset.branchCode,
+      currentValue: body.currentValue != null ? parseFloat(body.currentValue) : asset.currentValue,
+      interestRate: body.interestRate != null ? parseFloat(body.interestRate) : asset.interestRate,
+      monthlyDeposit: body.monthlyDeposit != null ? parseFloat(body.monthlyDeposit) : asset.monthlyDeposit,
+      employerContribution: body.employerContribution != null ? parseFloat(body.employerContribution) : asset.employerContribution,
+      expectedReturnRate: body.expectedReturnRate != null ? parseFloat(body.expectedReturnRate) : asset.expectedReturnRate,
+      quantity: body.quantity != null ? parseFloat(body.quantity) : asset.quantity,
+      purchasePrice: body.purchasePrice != null ? parseFloat(body.purchasePrice) : asset.purchasePrice,
+      purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : asset.purchaseDate,
+      maturityDate: body.maturityDate ? new Date(body.maturityDate) : asset.maturityDate,
       updatedAt: new Date(),
     },
   })
