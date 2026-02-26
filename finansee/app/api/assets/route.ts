@@ -43,10 +43,6 @@ export async function POST(req: NextRequest) {
     expectedReturnRate, bankCode, branchCode, notes,
   } = body
 
-  if (!type || !name || !institution) {
-    return NextResponse.json({ error: 'type, name, and institution are required' }, { status: 400 })
-  }
-
   const asset = await prisma.financialAsset.create({
     data: {
       userId: user.id,
@@ -64,7 +60,6 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Create initial snapshot
   await prisma.assetSnapshot.create({
     data: {
       assetId: asset.id,

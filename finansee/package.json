@@ -1,6 +1,6 @@
 {
-  "name": "family-house-manager",
-  "version": "0.1.0",
+  "name": "finansee",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,24 +12,17 @@
     "prisma:reset": "prisma migrate reset",
     "prisma:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
-    "seed:modular": "tsx prisma/seed-modular.ts",
-    "seed:finance": "tsx prisma/seed-finance.ts",
-    "setup": "npm install && prisma migrate dev && npm run seed:modular",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "setup": "npm install && prisma migrate dev && npm run seed"
   },
   "dependencies": {
     "@prisma/client": "5.8.0",
     "@tailwindcss/postcss": "^4.2.1",
-    "@types/otplib": "^7.0.0",
     "autoprefixer": "^10.4.24",
     "bcryptjs": "2.4.3",
     "clsx": "2.1.0",
     "date-fns": "3.0.6",
     "next": "14.0.4",
     "next-auth": "4.24.5",
-    "otplib": "^13.3.0",
     "postcss": "^8.5.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -38,20 +31,15 @@
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.57.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
-    "@types/uuid": "^10.0.0",
-    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "8.56.0",
     "eslint-config-next": "14.0.4",
-    "node-mocks-http": "^1.17.2",
-    "playwright": "^1.57.0",
     "prisma": "5.8.0",
     "ts-node": "10.9.2",
-    "typescript": "5.3.3",
-    "vitest": "^4.0.18"
+    "tsx": "^4.7.0",
+    "typescript": "5.3.3"
   }
 }

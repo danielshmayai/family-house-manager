@@ -34,45 +34,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const nextWeek = new Date(today)
     nextWeek.setDate(nextWeek.getDate() + 7)
 
-    // Find tasks that are overdue or due soon
-    const tasks = await prisma.task.findMany({
+    // Query activities that may need attention (using actual schema fields)
+    // Task model does not have householdId or dueDate — use Activity instead
+    const activities = await prisma.activity.findMany({
       where: {
-        householdId: user.householdId,
-        dueDate: {
-          not: null
-        }
+        category: { householdId: user.householdId },
+        isActive: true,
       },
-      select: {
-        id: true,
-        name: true,
-        dueDate: true
-      }
+      select: { id: true, name: true, frequency: true },
+      take: 50,
     })
 
     const notifications: any[] = []
 
-    for (const task of tasks) {
-      if (!task.dueDate) continue
-      
-      const dueDate = new Date(task.dueDate)
-      
-      if (dueDate < today) {
+    // Notify about DAILY activities that haven't been completed today
+    const startOfDay = new Date(today)
+    startOfDay.setHours(0, 0, 0, 0)
+
+    for (const activity of activities) {
+      if (activity.frequency !== 'DAILY') continue
+
+      const completedToday = await prisma.event.findFirst({
+        where: {
+          activityId: activity.id,
+          occurredAt: { gte: startOfDay },
+          recordedBy: { householdId: user.householdId },
+        },
+      })
+
+      if (!completedToday) {
         notifications.push({
-          id: `overdue-${task.id}`,
-          type: 'overdue',
-          taskId: task.id,
-          taskName: task.name,
-          dueDate: task.dueDate,
-          message: `${task.name} is overdue`
-        })
-      } else if (dueDate <= nextWeek) {
-        notifications.push({
-          id: `due-soon-${task.id}`,
-          type: 'due-soon',
-          taskId: task.id,
-          taskName: task.name,
-          dueDate: task.dueDate,
-          message: `${task.name} is due soon`
+          id: `pending-${activity.id}`,
+          type: 'pending-activity',
+          activityId: activity.id,
+          activityName: activity.name,
+          message: `${activity.name} hasn't been done today`,
         })
       }
     }
