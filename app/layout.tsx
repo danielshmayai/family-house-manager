@@ -2,7 +2,7 @@ import './globals.css'
 import React from 'react'
 import Providers from '../components/Providers'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../pages/api/auth/[...nextauth]'
+import { authOptions } from '../lib/auth'
 
 export const metadata = {
   title: 'FinanSee - ניהול תיק פיננסי',
