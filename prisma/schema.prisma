@@ -36,21 +36,21 @@ model User {
 model Household {
   id         String     @id @default(cuid())
   name       String
-  members    User[]
-  invites    Invite[]
-  events     Event[]
-  categories Category[]
   createdAt  DateTime   @default(now())
+  categories Category[]
+  events     Event[]
+  invites    Invite[]
+  members    User[]
 }
 
 model Invite {
   id          String    @id @default(cuid())
-  household   Household @relation(fields: [householdId], references: [id])
   householdId String
   code        String    @unique
   createdById String
   expiresAt   DateTime?
   usedById    String?
+  household   Household @relation(fields: [householdId], references: [id])
 }
 
 model Category {
@@ -63,10 +63,10 @@ model Category {
   position    Int        @default(0)
   isActive    Boolean    @default(true)
   householdId String?
-  household   Household? @relation(fields: [householdId], references: [id])
-  activities  Activity[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  activities  Activity[]
+  household   Household? @relation(fields: [householdId], references: [id])
 }
 
 model Activity {
@@ -91,17 +91,17 @@ model Activity {
 }
 
 model Task {
-  id           String   @id @default(cuid())
-  key          String   @unique
-  categoryId   String?
-  name         String
-  description  String?
+  id            String   @id @default(cuid())
+  key           String   @unique
+  categoryId    String?
+  name          String
+  description   String?
   defaultPoints Int
-  frequency    String
-  eligibility  String?
-  penaltyRules String?
-  createdById  String
-  createdAt    DateTime @default(now())
+  frequency     String
+  eligibility   String?
+  penaltyRules  String?
+  createdById   String
+  createdAt     DateTime @default(now())
 }
 
 model Event {
@@ -133,40 +133,27 @@ model BugReport {
 // FINANCAL APP MODELS
 // ────────────────────────────────────────────────
 
-// Asset types:
-// INVESTMENT    - מניות, ETF, קרנות נאמנות
-// SAVINGS       - פיקדונות, חשבון חיסכון
-// PENSION       - קרן פנסיה, ביטוח מנהלים
-// PROVIDENT     - קופת גמל
-// STUDY_FUND    - קרן השתלמות
-// CHECKING      - עובר ושב בבנק
-
 model FinancialAsset {
   id            String          @id @default(cuid())
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String          // INVESTMENT | SAVINGS | PENSION | PROVIDENT | STUDY_FUND | CHECKING
+  type          String
   name          String
-  institution   String          // bank / insurance company / fund manager
+  institution   String
   accountNumber String?
   currency      String          @default("ILS")
   currentValue  Float           @default(0)
-  // Investment specific
   ticker        String?
   quantity      Float?
   purchasePrice Float?
   purchaseDate  DateTime?
-  // Savings / Deposit specific
   interestRate  Float?
   maturityDate  DateTime?
-  // Pension / Provident specific
   monthlyDeposit Float?
   employerContribution Float?
   expectedReturnRate Float?
-  // Checking account
   bankCode      String?
   branchCode    String?
-  // General
   notes         String?
   isActive      Boolean         @default(true)
   createdAt     DateTime        @default(now())
@@ -174,7 +161,6 @@ model FinancialAsset {
   snapshots     AssetSnapshot[]
 }
 
-// Monthly/periodic snapshot of asset value for trend graphs
 model AssetSnapshot {
   id        String         @id @default(cuid())
   assetId   String
@@ -194,7 +180,7 @@ model FinancialGoal {
   targetAmount Float
   currentAmount Float   @default(0)
   targetDate  DateTime?
-  category    String?  // RETIREMENT | PROPERTY | EDUCATION | VACATION | EMERGENCY | OTHER
+  category    String?
   notes       String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -205,13 +191,13 @@ model Notification {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // VALUE_CHANGE | GOAL_ALERT | WEEKLY_SUMMARY | DEPOSIT_EXPIRY | RISK_ALERT
+  type      String
   title     String
   titleHe   String?
   message   String
   messageHe String?
   isRead    Boolean  @default(false)
-  metadata  String?  // JSON string
+  metadata  String?
   createdAt DateTime @default(now())
 }
 

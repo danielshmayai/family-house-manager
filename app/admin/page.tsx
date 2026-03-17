@@ -1,7 +1,8 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
 
 type Category = {
   id: string
@@ -191,8 +192,32 @@ export default function Admin() {
     setShowActivityModal(true)
   }
 
+  const categoryFileRef = useRef<HTMLInputElement>(null)
+  const activityFileRef = useRef<HTMLInputElement>(null)
+
   const iconOptions = ['📌', '🏠', '🧹', '🍽️', '🧺', '🌱', '🔧', '💪', '📚', '🎯', '⭐', '✓', '✨', '🎨', '💼', '🛁', '🐕', '🚗', '🛒', '🍳', '🧴', '🪴', '📦', '🔑']
   const colorOptions = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+  function handleImageUpload(file: File, target: 'category' | 'activity') {
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, GIF, SVG, WebP)')
+      return
+    }
+    if (file.size > 512 * 1024) {
+      alert('Image must be under 512 KB. Try a smaller image or an emoji instead.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUri = e.target?.result as string
+      if (target === 'category') {
+        setEditingCategory(prev => prev ? { ...prev, icon: dataUri } : prev)
+      } else {
+        setEditingActivity(prev => prev ? { ...prev, icon: dataUri } : prev)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
 
   // Loading state
   if (status === 'loading') {
@@ -357,7 +382,7 @@ export default function Admin() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 12px)', flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 'clamp(24px, 6vw, 32px)', flexShrink: 0 }}>{category.icon || '📌'}</span>
+                  <IconDisplay icon={category.icon} fallback="📌" size={32} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <h3 style={{ margin: 0, fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700', wordBreak: 'break-word' }}>{category.name}</h3>
                     {category.description && (
@@ -425,7 +450,7 @@ export default function Admin() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 'clamp(16px, 4vw, 18px)', flexShrink: 0 }}>{activity.icon || '✓'}</span>
+                          <IconDisplay icon={activity.icon} fallback="✓" size={18} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 'clamp(13px, 3.5vw, 14px)', fontWeight: '600', wordBreak: 'break-word' }}>{activity.name}</div>
                             <div style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', color: '#666' }}>
@@ -480,7 +505,24 @@ export default function Admin() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Icon</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+
+                {/* Current icon preview */}
+                {editingCategory.icon && (
+                  <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '8px', background: '#F3F4F6', borderRadius: '10px', border: '2px solid #667eea' }}>
+                      <IconDisplay icon={editingCategory.icon} fallback="📌" size={32} />
+                    </div>
+                    {isImageIcon(editingCategory.icon) && (
+                      <button onClick={() => setEditingCategory({ ...editingCategory, icon: '📌' })}
+                        style={{ padding: '6px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: '#991B1B' }}>
+                        ✕ Remove image
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Preset emoji grid */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   {iconOptions.map(icon => (
                     <button key={icon} onClick={() => setEditingCategory({ ...editingCategory, icon })}
                       style={{
@@ -491,6 +533,34 @@ export default function Admin() {
                       }}>{icon}</button>
                   ))}
                 </div>
+
+                {/* Custom emoji / text input */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Or type any emoji..."
+                    maxLength={4}
+                    style={{ flex: 1, padding: '10px 12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '18px', boxSizing: 'border-box' }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const val = (e.target as HTMLInputElement).value.trim()
+                        if (val) { setEditingCategory({ ...editingCategory, icon: val }); (e.target as HTMLInputElement).value = '' }
+                      }
+                    }}
+                    onBlur={e => {
+                      const val = e.target.value.trim()
+                      if (val) { setEditingCategory({ ...editingCategory, icon: val }); e.target.value = '' }
+                    }}
+                  />
+                </div>
+
+                {/* Image upload */}
+                <input ref={categoryFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'category'); e.target.value = '' }} />
+                <button onClick={() => categoryFileRef.current?.click()}
+                  style={{ padding: '8px 16px', background: '#EEF2FF', border: '2px dashed #667eea', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: '#4338CA', width: '100%', WebkitTapHighlightColor: 'transparent' }}>
+                  📷 Upload custom image (PNG, JPG, etc.)
+                </button>
               </div>
 
               <div>
@@ -560,7 +630,24 @@ export default function Admin() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Icon</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+
+                {/* Current icon preview */}
+                {editingActivity.icon && (
+                  <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '8px', background: '#F3F4F6', borderRadius: '10px', border: '2px solid #667eea' }}>
+                      <IconDisplay icon={editingActivity.icon} fallback="✓" size={32} />
+                    </div>
+                    {isImageIcon(editingActivity.icon) && (
+                      <button onClick={() => setEditingActivity({ ...editingActivity, icon: '✓' })}
+                        style={{ padding: '6px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: '#991B1B' }}>
+                        ✕ Remove image
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Preset emoji grid */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   {iconOptions.map(icon => (
                     <button key={icon} onClick={() => setEditingActivity({ ...editingActivity, icon })}
                       style={{
@@ -571,6 +658,34 @@ export default function Admin() {
                       }}>{icon}</button>
                   ))}
                 </div>
+
+                {/* Custom emoji / text input */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Or type any emoji..."
+                    maxLength={4}
+                    style={{ flex: 1, padding: '10px 12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '18px', boxSizing: 'border-box' }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const val = (e.target as HTMLInputElement).value.trim()
+                        if (val) { setEditingActivity({ ...editingActivity, icon: val }); (e.target as HTMLInputElement).value = '' }
+                      }
+                    }}
+                    onBlur={e => {
+                      const val = e.target.value.trim()
+                      if (val) { setEditingActivity({ ...editingActivity, icon: val }); e.target.value = '' }
+                    }}
+                  />
+                </div>
+
+                {/* Image upload */}
+                <input ref={activityFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'activity'); e.target.value = '' }} />
+                <button onClick={() => activityFileRef.current?.click()}
+                  style={{ padding: '8px 16px', background: '#EEF2FF', border: '2px dashed #667eea', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: '#4338CA', width: '100%', WebkitTapHighlightColor: 'transparent' }}>
+                  📷 Upload custom image (PNG, JPG, etc.)
+                </button>
               </div>
 
               <div>

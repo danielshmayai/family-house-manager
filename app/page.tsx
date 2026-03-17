@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import IconDisplay from '@/components/IconDisplay'
 
 type Category = {
   id: string
@@ -400,7 +401,7 @@ export default function HomePage() {
                   transition: 'all 0.2s', flexShrink: 0,
                   WebkitTapHighlightColor: 'transparent'
                 }}>
-                <span style={{ fontSize: 'clamp(16px, 4vw, 20px)' }}>{cat.icon || '📌'}</span>
+                <IconDisplay icon={cat.icon} fallback="📌" size={20} />
                 {cat.name}
               </button>
             ))}
@@ -508,7 +509,7 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    <div style={{ fontSize: 'clamp(36px, 9vw, 44px)', marginBottom: '10px' }}>{activity.icon || '✓'}</div>
+                    <IconDisplay icon={activity.icon} fallback="✓" size={44} style={{ marginBottom: '10px' }} />
                     <h3 style={{ margin: '0 0 6px', fontSize: 'clamp(15px, 4vw, 17px)', fontWeight: '700', color: isCompleted ? '#065F46' : '#1F2937' }}>
                       {activity.name}
                     </h3>
@@ -539,7 +540,7 @@ export default function HomePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 2vw, 10px)' }}>
                 {events.slice(0, 10).map(event => (
                   <div key={event.id} style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', padding: 'clamp(10px, 2.5vw, 12px)', background: '#F9FAFB', borderRadius: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ fontSize: '18px', flexShrink: 0 }}>{event.activity?.icon || '⭐'}</div>
+                    <IconDisplay icon={event.activity?.icon} fallback="⭐" size={18} />
                     <div style={{ flex: 1, minWidth: '120px' }}>
                       <div style={{ fontWeight: '700', fontSize: 'clamp(13px, 3.5vw, 14px)' }}>{event.activity?.name || 'Activity completed'}</div>
                       <div style={{ fontSize: 'clamp(10px, 2.5vw, 11px)', color: '#9CA3AF' }}>
