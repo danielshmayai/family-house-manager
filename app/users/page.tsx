@@ -13,7 +13,7 @@ type User = {
 }
 
 export default function UsersPage(){
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,7 +48,9 @@ export default function UsersPage(){
       })
       
       if (!res.ok) throw new Error('Failed to update user')
-      
+
+      // Refresh session so updated name/role is reflected immediately
+      await updateSession()
       await loadUsers()
       setShowEditModal(false)
       setEditingUser(null)

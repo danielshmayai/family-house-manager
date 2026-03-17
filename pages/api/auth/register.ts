@@ -1,10 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../../lib/prisma'
 import bcrypt from 'bcryptjs'
+import { rateLimit } from '../../../lib/rateLimit'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method !== 'POST') return res.status(405).end()
+    if (rateLimit(req, res, { max: 5, windowMs: 60_000, keyPrefix: 'register' })) return
 
     const { email, password, name, inviteCode, familyName } = req.body
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })

@@ -56,6 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'name and categoryId are required' })
       }
 
+      // Validate point values
+      if (defaultPoints !== undefined && (defaultPoints < 1 || defaultPoints > 1000)) {
+        return res.status(400).json({ error: 'defaultPoints must be between 1 and 1000' })
+      }
+
       const activity = await prisma.activity.create({
         data: {
           key: key || `activity_${Date.now()}`,
@@ -100,6 +105,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!id) {
         return res.status(400).json({ error: 'id is required' })
+      }
+
+      if (defaultPoints !== undefined && (defaultPoints < 1 || defaultPoints > 1000)) {
+        return res.status(400).json({ error: 'defaultPoints must be between 1 and 1000' })
       }
 
       const updateData: any = {}

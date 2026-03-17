@@ -106,12 +106,19 @@ export default function HomePage() {
     setCompleting(activity.id)
 
     try {
+      // Send client's local day boundaries for proper timezone-aware dedup
+      const now = new Date()
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+      const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+
       const payload: any = {
         eventType: 'ACTIVITY_COMPLETED',
         recordedById: userId,
         activityId: activity.id,
         points: activity.defaultPoints,
-        householdId
+        householdId,
+        dayStart: dayStart.toISOString(),
+        dayEnd: dayEnd.toISOString()
       }
 
       const res = await fetch('/api/events', {

@@ -1,12 +1,24 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../lib/prisma'
+import { getSessionUser, verifyHouseholdAccess } from '../../lib/apiAuth'
+import { rateLimit } from '../../lib/rateLimit'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method === 'POST'){
+      if (rateLimit(req, res, { max: 30, windowMs: 60_000, keyPrefix: 'events-post' })) return
       const payload = req.body
       if (!payload || !payload.eventType || !payload.recordedById) {
         return res.status(400).json({ error: 'eventType and recordedById are required' })
+      }
+
+      // Auth check: verify session user matches recordedById or is a manager
+      const sessionUser = await getSessionUser(req, res)
+      if (sessionUser && sessionUser.id !== payload.recordedById) {
+        const role = sessionUser.role
+        if (role !== 'ADMIN' && role !== 'MANAGER') {
+          return res.status(403).json({ error: 'You can only record events for yourself' })
+        }
       }
 
       // Validate recordedBy user
@@ -29,17 +41,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data.householdId = user.householdId
       }
 
+      // Permission check: user must belong to this household
+      if (sessionUser) {
+        const hasAccess = await verifyHouseholdAccess(sessionUser.id, data.householdId)
+        if (!hasAccess) {
+          return res.status(403).json({ error: 'You do not have access to this household' })
+        }
+      }
+
       // Handle activityId — validate, deduplicate DAILY, resolve points
       if (payload.activityId) {
         const activity = await prisma.activity.findUnique({ where: { id: payload.activityId } })
         if (!activity) return res.status(400).json({ error: 'Invalid activityId' })
 
         // Deduplication: prevent completing a DAILY activity more than once per user per day
+        // Use client-provided day boundaries if available, otherwise use server time
         if (activity.frequency === 'DAILY') {
-          const startOfDay = new Date()
-          startOfDay.setHours(0, 0, 0, 0)
-          const endOfDay = new Date()
-          endOfDay.setHours(23, 59, 59, 999)
+          let startOfDay: Date
+          let endOfDay: Date
+
+          if (payload.dayStart && payload.dayEnd) {
+            // Client sends their local day boundaries as ISO strings
+            startOfDay = new Date(payload.dayStart)
+            endOfDay = new Date(payload.dayEnd)
+            // Sanity check: boundaries should be within ~25 hours of each other
+            const diff = endOfDay.getTime() - startOfDay.getTime()
+            if (diff < 0 || diff > 25 * 60 * 60 * 1000) {
+              return res.status(400).json({ error: 'Invalid day boundaries' })
+            }
+          } else {
+            startOfDay = new Date()
+            startOfDay.setHours(0, 0, 0, 0)
+            endOfDay = new Date()
+            endOfDay.setHours(23, 59, 59, 999)
+          }
 
           const existing = await prisma.event.findFirst({
             where: {
@@ -53,10 +88,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
+        // Enforce requiresNote
+        if (activity.requiresNote && !payload.metadata) {
+          return res.status(400).json({ error: 'This activity requires a note' })
+        }
+
         data.activityId = payload.activityId
-        data.points = payload.points !== undefined ? Number(payload.points) : activity.defaultPoints
+
+        // Resolve points: use activity default unless client provides a valid positive value
+        const clientPoints = payload.points !== undefined && payload.points !== null ? Number(payload.points) : null
+        data.points = (clientPoints !== null && clientPoints > 0) ? clientPoints : activity.defaultPoints
       } else {
-        data.points = payload.points !== undefined ? Number(payload.points) : 0
+        const clientPoints = payload.points !== undefined && payload.points !== null ? Number(payload.points) : 0
+        data.points = clientPoints >= 0 ? clientPoints : 0
+      }
+
+      // Validate point range
+      if (data.points < 0 || data.points > 10000) {
+        return res.status(400).json({ error: 'Points must be between 0 and 10000' })
       }
 
       // Legacy taskId support
@@ -88,6 +137,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (req.method === 'GET'){
       const { householdId, userId } = req.query
+
+      // Permission check for GET
+      const sessionUser = await getSessionUser(req, res)
+      if (sessionUser && householdId) {
+        const hasAccess = await verifyHouseholdAccess(sessionUser.id, String(householdId))
+        if (!hasAccess) {
+          return res.status(403).json({ error: 'You do not have access to this household' })
+        }
+      }
+
       const where: any = {}
       if (householdId) where.householdId = String(householdId)
       if (userId) where.recordedById = String(userId)
@@ -111,7 +170,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const eventId = String(id)
 
-      // Find the event first to return info about what was reverted
       const event = await prisma.event.findUnique({
         where: { id: eventId },
         include: {
@@ -124,8 +182,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Event not found' })
       }
 
-      // Delete the event — this automatically reverts scoring since
-      // leaderboard/points are computed dynamically from events
+      // Permission check: only the user who recorded or a manager can delete
+      const sessionUser = await getSessionUser(req, res)
+      if (sessionUser && sessionUser.id !== event.recordedById) {
+        if (sessionUser.role !== 'ADMIN' && sessionUser.role !== 'MANAGER') {
+          return res.status(403).json({ error: 'You can only undo your own events' })
+        }
+      }
+
       await prisma.event.delete({ where: { id: eventId } })
 
       return res.json({
