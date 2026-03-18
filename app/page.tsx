@@ -26,6 +26,7 @@ type Activity = {
   defaultPoints: number
   frequency: string
   isActive: boolean
+  requiresNote?: boolean
 }
 
 type EventItem = {
@@ -50,6 +51,8 @@ export default function HomePage() {
   const [completing, setCompleting] = useState<string | null>(null)
   const [reverting, setReverting] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null)
+  const [noteModal, setNoteModal] = useState<{ activity: Activity } | null>(null)
+  const [noteInput, setNoteInput] = useState('')
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -105,7 +108,16 @@ export default function HomePage() {
     }
   }, [status, loadData])
 
-  async function completeActivity(activity: Activity) {
+  function handleActivityTap(activity: Activity) {
+    if (activity.requiresNote) {
+      setNoteInput('')
+      setNoteModal({ activity })
+    } else {
+      completeActivity(activity)
+    }
+  }
+
+  async function completeActivity(activity: Activity, note?: string) {
     setCompleting(activity.id)
 
     try {
@@ -121,6 +133,10 @@ export default function HomePage() {
         householdId,
         dayStart: dayStart.toISOString(),
         dayEnd: dayEnd.toISOString()
+      }
+
+      if (note) {
+        payload.metadata = JSON.stringify({ note })
       }
 
       const res = await fetch('/api/events', {
@@ -471,7 +487,7 @@ export default function HomePage() {
                       WebkitTapHighlightColor: 'transparent',
                       boxShadow: isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.06)'
                     }}
-                    onClick={() => !isCompleted && !isProcessing && completeActivity(activity)}
+                    onClick={() => !isCompleted && !isProcessing && handleActivityTap(activity)}
                     onMouseEnter={e => {
                       if (!isCompleted && !isProcessing) {
                         e.currentTarget.style.transform = 'translateY(-4px)'
@@ -614,6 +630,73 @@ export default function HomePage() {
                 {t(lang, item.labelKey)}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Note Modal ─── */}
+      {noteModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px',
+            padding: '24px', width: '100%', maxWidth: '400px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px', textAlign: 'center' }}>
+              {noteModal.activity.icon || '📝'}
+            </div>
+            <h3 style={{ margin: '0 0 4px', textAlign: 'center', fontSize: '18px', fontWeight: '700' }}>
+              {noteModal.activity.name}
+            </h3>
+            <p style={{ margin: '0 0 16px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
+              {t(lang, 'noteRequired')}
+            </p>
+            <textarea
+              autoFocus
+              value={noteInput}
+              onChange={e => setNoteInput(e.target.value)}
+              placeholder={t(lang, 'addDetails') as string}
+              style={{
+                width: '100%', padding: '12px',
+                border: '2px solid #E5E7EB', borderRadius: '12px',
+                fontSize: '16px', fontFamily: 'system-ui',
+                minHeight: '100px', resize: 'vertical',
+                boxSizing: 'border-box', marginBottom: '16px'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setNoteModal(null)}
+                style={{
+                  flex: 1, padding: '12px', background: '#F3F4F6',
+                  border: 'none', borderRadius: '12px', fontSize: '15px',
+                  fontWeight: '700', cursor: 'pointer', color: '#374151'
+                }}
+              >
+                {t(lang, 'cancel')}
+              </button>
+              <button
+                disabled={!noteInput.trim()}
+                onClick={() => {
+                  const activity = noteModal.activity
+                  setNoteModal(null)
+                  completeActivity(activity, noteInput.trim())
+                }}
+                style={{
+                  flex: 1, padding: '12px',
+                  background: noteInput.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#D1D5DB',
+                  border: 'none', borderRadius: '12px', fontSize: '15px',
+                  fontWeight: '700', cursor: noteInput.trim() ? 'pointer' : 'not-allowed',
+                  color: 'white'
+                }}
+              >
+                {t(lang, 'completeActivity')}
+              </button>
+            </div>
           </div>
         </div>
       )}
