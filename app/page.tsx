@@ -56,6 +56,7 @@ export default function HomePage() {
   const [noteModal, setNoteModal] = useState<{ activity: Activity } | null>(null)
   const [noteInput, setNoteInput] = useState('')
   const [photoInput, setPhotoInput] = useState<string | null>(null)
+  const [viewModal, setViewModal] = useState<{ activity: Activity; note?: string; photo?: string } | null>(null)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -479,6 +480,9 @@ export default function HomePage() {
                 const completionEvent = events.find(e => e.activityId === activity.id)
                 const isRevertingThis = completionEvent ? reverting === completionEvent.id : false
 
+                const parsedMeta = completionEvent?.metadata ? (() => { try { return JSON.parse(completionEvent.metadata!) } catch { return null } })() : null
+                const hasViewableContent = isCompleted && completionEvent && (parsedMeta?.note || parsedMeta?.photo)
+
                 return (
                   <div key={activity.id}
                     style={{
@@ -486,7 +490,7 @@ export default function HomePage() {
                       border: isCompleted ? '2px solid #10B981' : '2px solid #E5E7EB',
                       borderRadius: '18px',
                       padding: 'clamp(16px, 4vw, 24px)',
-                      cursor: isCompleted ? 'default' : 'pointer',
+                      cursor: (isCompleted && !hasViewableContent) ? 'default' : 'pointer',
                       transition: 'all 0.2s',
                       opacity: isProcessing || isRevertingThis ? 0.6 : 1,
                       position: 'relative', overflow: 'hidden',
@@ -494,11 +498,21 @@ export default function HomePage() {
                       WebkitTapHighlightColor: 'transparent',
                       boxShadow: isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.06)'
                     }}
-                    onClick={() => !isCompleted && !isProcessing && handleActivityTap(activity)}
+                    onClick={() => {
+                      if (isProcessing) return
+                      if (hasViewableContent) {
+                        setViewModal({ activity, note: parsedMeta?.note, photo: parsedMeta?.photo })
+                      } else if (!isCompleted) {
+                        handleActivityTap(activity)
+                      }
+                    }}
                     onMouseEnter={e => {
-                      if (!isCompleted && !isProcessing) {
+                      if (isProcessing) return
+                      if (!isCompleted || hasViewableContent) {
                         e.currentTarget.style.transform = 'translateY(-4px)'
-                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(102,126,234,0.2)'
+                        e.currentTarget.style.boxShadow = hasViewableContent
+                          ? '0 8px 20px rgba(16,185,129,0.25)'
+                          : '0 8px 20px rgba(102,126,234,0.2)'
                       }
                     }}
                     onMouseLeave={e => {
@@ -550,10 +564,46 @@ export default function HomePage() {
                       </p>
                     )}
 
+                    {/* Requirement badges */}
+                    {(!isCompleted && (activity.requiresNote || activity.requiresPhoto)) && (
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                        {activity.requiresNote && (
+                          <span title={t(lang, 'requiresNoteIndicator') as string} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '3px',
+                            background: '#EFF6FF', color: '#1D4ED8',
+                            padding: '2px 8px', borderRadius: '12px',
+                            fontSize: '11px', fontWeight: '700'
+                          }}>
+                            📝 {t(lang, 'requiresNoteIndicator')}
+                          </span>
+                        )}
+                        {activity.requiresPhoto && (
+                          <span title={t(lang, 'requiresPhotoIndicator') as string} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '3px',
+                            background: '#FFF7ED', color: '#C2410C',
+                            padding: '2px 8px', borderRadius: '12px',
+                            fontSize: '11px', fontWeight: '700'
+                          }}>
+                            📷 {t(lang, 'requiresPhotoIndicator')}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #E5E7EB', gap: '8px' }}>
                       <div style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', color: '#9CA3AF', fontWeight: '600' }}>{activity.frequency}</div>
-                      <div style={{ fontSize: 'clamp(18px, 4.5vw, 20px)', fontWeight: '800', color: isCompleted ? '#10B981' : '#667eea' }}>
-                        +{activity.defaultPoints} ⭐
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {hasViewableContent && (
+                          <span style={{
+                            fontSize: '11px', color: '#059669', fontWeight: '700',
+                            background: '#D1FAE5', padding: '2px 8px', borderRadius: '12px'
+                          }}>
+                            {parsedMeta?.photo ? '📷' : ''}{parsedMeta?.note ? ' 📝' : ''} {t(lang, 'viewDetails')}
+                          </span>
+                        )}
+                        <div style={{ fontSize: 'clamp(18px, 4.5vw, 20px)', fontWeight: '800', color: isCompleted ? '#10B981' : '#667eea' }}>
+                          +{activity.defaultPoints} ⭐
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -637,6 +687,75 @@ export default function HomePage() {
                 {t(lang, item.labelKey)}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── View Details Modal ─── */}
+      {viewModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, padding: '20px'
+        }} onClick={() => setViewModal(null)}>
+          <div style={{
+            background: 'white', borderRadius: '16px',
+            padding: '24px', width: '100%', maxWidth: '420px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '28px' }}>{viewModal.activity.icon || '✓'}</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#065F46' }}>{viewModal.activity.name}</h3>
+                  <div style={{ fontSize: '12px', color: '#10B981', fontWeight: '700', marginTop: '2px' }}>
+                    ✅ {t(lang, 'completionDetails')}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setViewModal(null)} style={{
+                background: '#F3F4F6', border: 'none', borderRadius: '50%',
+                width: '32px', height: '32px', cursor: 'pointer',
+                fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#6B7280', flexShrink: 0
+              }}>✕</button>
+            </div>
+
+            {viewModal.photo && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '8px' }}>
+                  📷 {t(lang, 'photoLabel2')}
+                </div>
+                <img src={viewModal.photo} alt="completion photo" style={{
+                  width: '100%', borderRadius: '12px', border: '2px solid #D1FAE5',
+                  maxHeight: '300px', objectFit: 'cover', display: 'block'
+                }} />
+              </div>
+            )}
+
+            {viewModal.note && (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '8px' }}>
+                  📝 {t(lang, 'noteLabel')}
+                </div>
+                <div style={{
+                  background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px',
+                  padding: '12px', fontSize: '14px', color: '#374151', lineHeight: '1.6',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word'
+                }}>
+                  {viewModal.note}
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => setViewModal(null)} style={{
+              width: '100%', padding: '12px',
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+              border: 'none', borderRadius: '12px', fontSize: '15px',
+              fontWeight: '700', cursor: 'pointer', color: 'white'
+            }}>
+              {t(lang, 'close')}
+            </button>
           </div>
         </div>
       )}
