@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: { householdId },
       select: { id: true }
     })
-    const categoryIds = categories.map(c => c.id)
+    const categoryIds = categories.map((c: { id: string }) => c.id)
 
     if (categoryIds.length > 0) {
       await prisma.activity.deleteMany({ where: { categoryId: { in: categoryIds } } })

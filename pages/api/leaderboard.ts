@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Compute points per user from grouped events + compute streaks in parallel
-    const results = await Promise.all(members.map(async (m) => {
+    const results = await Promise.all(members.map(async (m: any) => {
       const userEvents = eventsByUser.get(m.id) || []
       const pts = computePointsFromEvents(m.id, userEvents)
       const streak = await computeStreakForUser(m.id, String(householdId))

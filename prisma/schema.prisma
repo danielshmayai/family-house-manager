@@ -3,11 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // directUrl is only needed when using Neon with PgBouncer connection pooling.
-  // Uncomment the line below in production (Vercel) when DIRECT_URL is set.
-  // directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
