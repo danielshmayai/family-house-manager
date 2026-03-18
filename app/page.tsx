@@ -6,6 +6,7 @@ import IconDisplay from '@/components/IconDisplay'
 import LanguageToggle from '@/components/LanguageToggle'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
+import { compressImage } from '@/lib/compressImage'
 
 type Category = {
   id: string
@@ -698,25 +699,11 @@ export default function HomePage() {
                   capture="environment"
                   style={{ display: 'none' }}
                   id="photo-capture-input"
-                  onChange={e => {
+                  onChange={async e => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    const reader = new FileReader()
-                    reader.onload = ev => {
-                      // Compress via canvas
-                      const img = new Image()
-                      img.onload = () => {
-                        const canvas = document.createElement('canvas')
-                        const MAX = 800
-                        const scale = Math.min(1, MAX / Math.max(img.width, img.height))
-                        canvas.width = img.width * scale
-                        canvas.height = img.height * scale
-                        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-                        setPhotoInput(canvas.toDataURL('image/jpeg', 0.7))
-                      }
-                      img.src = ev.target?.result as string
-                    }
-                    reader.readAsDataURL(file)
+                    const compressed = await compressImage(file)
+                    setPhotoInput(compressed)
                   }}
                 />
                 {photoInput ? (
