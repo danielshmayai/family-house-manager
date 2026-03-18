@@ -6,7 +6,7 @@ import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import LanguageToggle from '@/components/LanguageToggle'
 
-type Path = 'choose' | 'create' | 'join'
+type Path = 'choose' | 'create' | 'join' | 'pending'
 
 export default function Register() {
   const [path, setPath] = useState<Path>('choose')
@@ -37,6 +37,12 @@ export default function Register() {
       const data = await res.json()
       if (!res.ok) {
         setMsg(data.error || 'Registration failed')
+        setLoading(false)
+        return
+      }
+      // New-family registrations require product-admin approval
+      if (data.pending) {
+        setPath('pending')
         setLoading(false)
         return
       }
@@ -176,6 +182,62 @@ export default function Register() {
               {t(lang, 'signInArrow')}
             </a>
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (path === 'pending') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        fontFamily: 'system-ui'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '28px',
+          padding: 'clamp(32px, 8vw, 56px)',
+          maxWidth: '460px',
+          width: '100%',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.2)',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: 'clamp(56px, 14vw, 80px)', marginBottom: '20px' }}>⏳</div>
+          <h1 style={{ margin: '0 0 12px', fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#1F2937' }}>
+            {lang === 'he' ? 'הבקשה נשלחה לאישור' : 'Pending Approval'}
+          </h1>
+          <p style={{ color: '#6B7280', margin: '0 0 24px', lineHeight: '1.6', fontSize: 'clamp(14px, 3.5vw, 16px)' }}>
+            {lang === 'he'
+              ? `נשלח אימייל למנהל המוצר לאישור הבקשה שלך. לאחר האישור תקבל/י אימייל עם קישור כניסה.`
+              : `An approval request has been sent to the product admin. Once approved, you'll receive an email with a login link.`}
+          </p>
+          <div style={{
+            background: '#F3F4F6',
+            borderRadius: '14px',
+            padding: '16px',
+            marginBottom: '24px',
+            fontSize: '14px',
+            color: '#6B7280'
+          }}>
+            {lang === 'he' ? `📧 ${email}` : `📧 ${email}`}
+          </div>
+          <a href="/auth/login" style={{
+            display: 'block',
+            padding: '14px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            color: 'white',
+            textDecoration: 'none',
+            fontWeight: '700',
+            fontSize: '15px'
+          }}>
+            {lang === 'he' ? '→ לדף הכניסה' : '→ Back to Sign In'}
+          </a>
         </div>
       </div>
     )

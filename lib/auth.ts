@@ -17,6 +17,9 @@ export const authOptions: AuthOptions = {
         if (!user || !user.passwordHash) return null
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
+        if (user.approvalStatus === 'PENDING') {
+          throw new Error('PENDING_APPROVAL')
+        }
         return {
           id: user.id,
           name: user.name,
