@@ -50,10 +50,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.json({ pending, households })
   }
 
-  // ── POST — approve ────────────────────────────────────────────────────────
+  // ── POST ─────────────────────────────────────────────────────────────────
   if (req.method === 'POST') {
-    const { userId, familyName, lang } = req.body as { userId?: string; familyName?: string; lang?: string }
+    const { action, userId, familyName, lang, email, name } = req.body as {
+      action?: string
+      userId?: string
+      familyName?: string
+      lang?: string
+      email?: string
+      name?: string
+    }
 
+    // ── action: invite — product admin initiates a new family head ──────────
+    if (action === 'invite') {
+      if (!email?.trim()) return res.status(400).json({ error: 'email required' })
+      if (!familyName?.trim()) return res.status(400).json({ error: 'familyName required' })
+
+      const normalizedEmail = email.trim().toLowerCase()
+      const exists = await prisma.user.findUnique({ where: { email: normalizedEmail } })
+      if (exists) return res.status(409).json({ error: 'כתובת המייל כבר רשומה במערכת' })
+
+      const resolvedLang = (lang === 'en' || lang === 'he') ? lang : 'he'
+      const resolvedFamily = familyName.trim()
+
+      const revokeToken = uuidv4()
+      const setupToken = uuidv4()
+
+      const household = await prisma.household.create({
+        data: { name: resolvedFamily, revokeToken },
+      })
+
+      const newUser = await prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          name: name?.trim() || null,
+          passwordHash: null,
+          role: 'ADMIN',
+          approvalStatus: 'APPROVED',
+          householdId: household.id,
+          setupToken,
+          language: resolvedLang,
+        },
+      })
+
+      try { await seedHouseholdDefaults(prisma, household.id, newUser.id, resolvedLang) }
+      catch (e) { console.error('seed defaults failed (non-fatal):', e) }
+
+      const setupLink = `${APP_URL}/auth/setup?token=${setupToken}`
+
+      return res.json({ ok: true, setupLink, familyName: resolvedFamily, email: normalizedEmail })
+    }
+
+    // ── action: approve (default) ─────────────────────────────────────────
     if (!userId) return res.status(400).json({ error: 'userId required' })
 
     const user = await prisma.user.findUnique({ where: { id: userId } })

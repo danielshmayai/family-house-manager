@@ -43,6 +43,15 @@ export default function ProductAdminPage() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [expandedHousehold, setExpandedHousehold] = useState<string | null>(null)
 
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviteFamily, setInviteFamily] = useState('')
+  const [inviteLang, setInviteLang] = useState<'he' | 'en'>('he')
+  const [inviting, setInviting] = useState(false)
+  const [generatedLink, setGeneratedLink] = useState<{ url: string; familyName: string; email: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+
   const sessionUser = session?.user as any
   const isAdmin = sessionUser?.email === PRODUCT_ADMIN_EMAIL
 
@@ -110,6 +119,46 @@ export default function ProductAdminPage() {
     } finally {
       setDeletingId(null)
     }
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    if (!inviteFamily.trim()) return
+    setInviting(true)
+    setGeneratedLink(null)
+    try {
+      const res = await fetch('/api/admin/families', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'invite',
+          email: inviteEmail.trim(),
+          name: inviteName.trim() || undefined,
+          familyName: inviteFamily.trim(),
+          lang: inviteLang,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'שגיאה')
+      setGeneratedLink({ url: data.setupLink, familyName: data.familyName, email: data.email })
+      setInviteEmail('')
+      setInviteName('')
+      setInviteFamily('')
+      showToast(`✅ קישור הוזמן עבור ${data.email}`)
+      await loadData()
+    } catch (e: any) {
+      showToast(`❌ ${e.message}`, false)
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  function copyLink(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
   }
 
   function formatDate(iso: string) {
@@ -198,6 +247,130 @@ export default function ProductAdminPage() {
           </div>
         ) : (
           <>
+            {/* ── Section: Invite new family head ───────────────────────── */}
+            <div style={{ marginBottom: '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '24px' }}>📨</div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 'clamp(17px, 4vw, 21px)', fontWeight: '800', color: '#1f2937' }}>
+                    הזמנת ראש משפחה חדש
+                  </h2>
+                  <p style={{ margin: '2px 0 0', color: '#6b7280', fontSize: '13px' }}>
+                    יצירת קישור הגדרה ישיר — ללא צורך ברישום עצמאי
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ background: 'white', borderRadius: '18px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', border: '2px solid #ede9fe' }}>
+                <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                        מייל ראש המשפחה *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="email@example.com"
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', fontFamily: 'system-ui', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                        שם ראש המשפחה (אופציונלי)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="ישראל ישראלי"
+                        value={inviteName}
+                        onChange={e => setInviteName(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', fontFamily: 'system-ui', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                        שם המשפחה *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="משפחת כהן"
+                        value={inviteFamily}
+                        onChange={e => setInviteFamily(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', fontFamily: 'system-ui', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                        שפה
+                      </label>
+                      <select
+                        value={inviteLang}
+                        onChange={e => setInviteLang(e.target.value as 'he' | 'en')}
+                        style={{ width: '100%', padding: '10px 12px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', fontFamily: 'system-ui', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                      >
+                        <option value="he">🇮🇱 עברית</option>
+                        <option value="en">🇬🇧 English</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={inviting || !inviteEmail.trim() || !inviteFamily.trim()}
+                    style={{
+                      padding: '13px 24px',
+                      background: inviting || !inviteEmail.trim() || !inviteFamily.trim()
+                        ? '#ede9fe'
+                        : 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                      color: inviting || !inviteEmail.trim() || !inviteFamily.trim() ? '#7c3aed' : 'white',
+                      border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '800',
+                      cursor: inviting ? 'not-allowed' : 'pointer',
+                      alignSelf: 'flex-start',
+                      boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
+                    }}
+                  >
+                    {inviting ? '⏳ יוצר קישור...' : '📨 צור קישור הזמנה'}
+                  </button>
+                </form>
+
+                {/* Generated link display */}
+                {generatedLink && (
+                  <div style={{ marginTop: '20px', padding: '16px', background: '#f0fdf4', borderRadius: '14px', border: '2px solid #bbf7d0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#065f46', marginBottom: '8px' }}>
+                      ✅ קישור הגדרה עבור {generatedLink.email} — {generatedLink.familyName}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <code style={{
+                        flex: '1 1 200px', background: 'white', border: '1px solid #d1fae5',
+                        borderRadius: '8px', padding: '10px 12px', fontSize: '12px',
+                        color: '#1f2937', wordBreak: 'break-all', fontFamily: 'monospace',
+                        overflowWrap: 'anywhere',
+                      }}>
+                        {generatedLink.url}
+                      </code>
+                      <button
+                        onClick={() => copyLink(generatedLink.url)}
+                        style={{
+                          padding: '10px 16px', background: copied ? '#10b981' : 'linear-gradient(135deg, #667eea, #764ba2)',
+                          color: 'white', border: 'none', borderRadius: '10px',
+                          fontSize: '13px', fontWeight: '800', cursor: 'pointer',
+                          flexShrink: 0, transition: 'background 0.2s',
+                        }}
+                      >
+                        {copied ? '✅ הועתק!' : '📋 העתק'}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                      שלח את הקישור לראש המשפחה — הוא יגדיר סיסמה ויכנס ישירות.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* ── Section: Pending approvals ─────────────────────────────── */}
             <div style={{ marginBottom: '32px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
