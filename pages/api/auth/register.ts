@@ -17,11 +17,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
     if (!name || name.trim().length < 2) return res.status(400).json({ error: 'Please provide your name (at least 2 characters)' })
 
+    const hash = await bcrypt.hash(password, 10)
+
     // Check if email already exists
     const exists = await prisma.user.findUnique({ where: { email } })
-    if (exists) return res.status(400).json({ error: 'An account with this email already exists' })
-
-    const hash = await bcrypt.hash(password, 10)
+    if (exists) {
+      // Allow re-applying if the user deleted their household and wants to create a new one
+      if (!exists.householdId && exists.approvalStatus !== 'PENDING') {
+        const approvalToken = uuidv4()
+        const resolvedFamilyName = (familyName && familyName.trim()) ? familyName.trim() : `${(exists.name || name).trim()}'s Family`
+        await prisma.user.update({
+          where: { id: exists.id },
+          data: {
+            passwordHash: hash,
+            role: 'ADMIN',
+            approvalStatus: 'PENDING',
+            approvalToken,
+            language: resolvedLang,
+          },
+        })
+        const proto = (req.headers['x-forwarded-proto'] as string) || 'http'
+        const host = req.headers.host || 'localhost:3000'
+        const approveUrl = `${proto}://${host}/api/admin/approve?token=${approvalToken}&family=${encodeURIComponent(resolvedFamilyName)}&lang=${resolvedLang}`
+        try {
+          await sendApprovalRequestEmail(PRODUCT_ADMIN_EMAIL, (exists.name || name).trim(), email, resolvedFamilyName, approveUrl)
+        } catch (emailErr) {
+          console.error('Failed to send re-approval email (non-fatal):', emailErr)
+        }
+        return res.json({ pending: true })
+      }
+      if (!exists.householdId && exists.approvalStatus === 'PENDING') {
+        return res.status(400).json({ error: 'Your request is already pending approval. Please wait for confirmation.' })
+      }
+      return res.status(400).json({ error: 'An account with this email already exists' })
+    }
 
     // --- Path A: Join existing family with invite code ---
     if (inviteCode && inviteCode.trim()) {
