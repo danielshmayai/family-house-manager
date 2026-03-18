@@ -3,14 +3,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const asset = await prisma.financialAsset.findFirst({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
   })
   if (!asset) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -19,7 +20,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   // Explicitly pick only user-editable fields — never allow overwriting id, userId, createdAt
   const updated = await prisma.financialAsset.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       name: body.name ?? asset.name,
       institution: body.institution ?? asset.institution,
@@ -46,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (Math.abs(newValue - prevValue) / Math.max(prevValue, 1) > 0.001) {
     await prisma.assetSnapshot.create({
       data: {
-        assetId: params.id,
+        assetId: id,
         userId: user.id,
         value: newValue,
         date: new Date(),
@@ -73,14 +74,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(updated)
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   await prisma.financialAsset.updateMany({
-    where: { id: params.id, userId: user.id },
+    where: { id, userId: user.id },
     data: { isActive: false },
   })
   return NextResponse.json({ success: true })
