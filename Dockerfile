@@ -42,7 +42,7 @@ RUN mkdir -p /data && chown nextjs:nodejs /data
 
 # Script to run migrations then start
 COPY --from=builder /app/start.sh ./start.sh
-RUN chmod +x start.sh
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 
 USER nextjs
 
