@@ -1,14 +1,14 @@
 {
-  "name": "FinanSee - ניהול תיק פיננסי",
-  "short_name": "FinanSee",
-  "description": "ניהול חכם של כל הנכסים הפיננסיים שלך במקום אחד",
-  "start_url": "/finance",
+  "name": "Family House Manager",
+  "short_name": "HouseManager",
+  "description": "Manage household tasks, events and members",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#1a56db",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5a4",
   "orientation": "portrait",
-  "lang": "he",
-  "dir": "rtl",
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -23,21 +23,14 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["finance", "productivity"],
+  "categories": ["productivity", "utilities"],
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "לוח בקרה",
-      "short_name": "בקרה",
-      "description": "פתח את לוח הבקרה",
-      "url": "/finance",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "נכסים",
-      "short_name": "נכסים",
-      "description": "נהל את הנכסים שלך",
-      "url": "/finance/assets",
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open the dashboard",
+      "url": "/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

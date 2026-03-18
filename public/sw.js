@@ -1,5 +1,5 @@
-// FinanSee Service Worker
-const CACHE_NAME = 'finansee-v2'
+// Service Worker for Family House Manager (basic offline support)
+const CACHE_NAME = 'house-manager-v1'
 const STATIC_ASSETS = [
   '/manifest.json',
 ]

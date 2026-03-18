@@ -30,7 +30,7 @@
   },
   "exclude": [
     "node_modules",
-    "finansee"
+    
   ],
   "include": [
     "next-env.d.ts",

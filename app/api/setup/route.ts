@@ -13,10 +13,10 @@ export async function POST(req: NextRequest) {
   try {
     const hash = await bcrypt.hash('demo123', 10)
     const user = await prisma.user.upsert({
-      where: { email: 'demo@finansee.app' },
+      where: { email: 'demo@family-house.local' },
       update: {},
       create: {
-        email: 'demo@finansee.app',
+        email: 'demo@family-house.local',
         name: 'ישראל ישראלי',
         passwordHash: hash,
         role: 'ADMIN',

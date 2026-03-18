@@ -5,8 +5,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../lib/auth'
 
 export const metadata = {
-  title: 'FinanSee - ניהול תיק פיננסי',
-  description: 'ניהול חכם של כל הנכסים הפיננסיים שלך במקום אחד',
+  title: 'Family House Manager',
+  description: 'Manage household tasks, events and members',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
@@ -15,7 +15,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'FinanSee',
+    title: 'Family House Manager',
   },
 }
 
