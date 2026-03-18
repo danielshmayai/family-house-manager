@@ -1,9 +1,32 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../lib/prisma'
 import { v4 as uuidv4 } from 'uuid'
+import { getSessionUser } from '../../lib/apiAuth'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
+    if (req.method === 'DELETE') {
+      const sessionUser = await getSessionUser(req, res)
+      if (!sessionUser) return res.status(401).json({ error: 'Unauthorized' })
+      if (sessionUser.role !== 'ADMIN') return res.status(403).json({ error: 'Only admin can delete the household' })
+      const householdId = sessionUser.householdId
+      if (!householdId) return res.status(400).json({ error: 'No household found' })
+
+      // Delete in correct FK order
+      await prisma.event.deleteMany({ where: { householdId } })
+      const categories = await prisma.category.findMany({ where: { householdId }, select: { id: true } })
+      const catIds = categories.map((c: { id: string }) => c.id)
+      if (catIds.length > 0) {
+        await prisma.activity.deleteMany({ where: { categoryId: { in: catIds } } })
+      }
+      await prisma.category.deleteMany({ where: { householdId } })
+      await prisma.invite.deleteMany({ where: { householdId } })
+      await prisma.user.updateMany({ where: { householdId }, data: { householdId: null, role: 'MEMBER' } })
+      await prisma.household.delete({ where: { id: householdId } })
+
+      return res.json({ success: true })
+    }
+
     if (req.method === 'POST'){
       const { name, createdById, action, householdId, email } = req.body
       

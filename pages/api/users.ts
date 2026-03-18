@@ -9,6 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const SAFE_USER_FIELDS = {
       id: true, email: true, name: true, householdId: true,
       role: true, language: true, theme: true, otpEnabled: true, createdAt: true,
+      setupToken: true,
     } as const
 
     if (req.method === 'GET'){

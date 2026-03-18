@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
@@ -13,6 +13,7 @@ type User = {
   role: string
   householdId: string | null
   createdAt: string
+  setupToken?: string | null
 }
 
 export default function UsersPage(){
@@ -30,6 +31,18 @@ export default function UsersPage(){
   const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [resetPassword, setResetPassword] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
+
+  // Add member manually
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [addName, setAddName] = useState('')
+  const [addEmail, setAddEmail] = useState('')
+  const [addRole, setAddRole] = useState('MEMBER')
+  const [addLoading, setAddLoading] = useState(false)
+  const [setupLink, setSetupLink] = useState('')
+  const [addError, setAddError] = useState('')
+
+  // Delete family
+  const [deletingFamily, setDeletingFamily] = useState(false)
 
   useEffect(() => { loadUsers() }, [session])
 
@@ -55,10 +68,9 @@ export default function UsersPage(){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: userId, ...updates })
       })
-      
+
       if (!res.ok) throw new Error('Failed to update user')
 
-      // Refresh session so updated name/role is reflected immediately
       await updateSession()
       await loadUsers()
       setShowEditModal(false)
@@ -90,17 +102,17 @@ export default function UsersPage(){
     try {
       const householdId = (session?.user as any)?.householdId
       if (!householdId) throw new Error('No household found')
-      
+
       const res = await fetch('/api/households', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           action: 'generateInvite',
           householdId,
           email: inviteEmail || undefined
         })
       })
-      
+
       if (!res.ok) throw new Error('Failed to generate invite')
       const data = await res.json()
       setInviteCode(data.code)
@@ -135,6 +147,55 @@ export default function UsersPage(){
     }
   }
 
+  async function addMemberManually() {
+    if (!addName.trim() || !addEmail.trim()) return
+    setAddLoading(true)
+    setAddError('')
+    try {
+      const res = await fetch('/api/users/add-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: addName.trim(), email: addEmail.trim(), role: addRole })
+      })
+      const data = await res.json()
+      if (!res.ok) { setAddError(data.error || 'Error'); return }
+      setSetupLink(data.setupLink)
+      await loadUsers()
+    } catch (err: any) {
+      setAddError(err.message)
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  function closeAddMember() {
+    setShowAddMemberModal(false)
+    setAddName('')
+    setAddEmail('')
+    setAddRole('MEMBER')
+    setSetupLink('')
+    setAddError('')
+  }
+
+  async function deleteFamily() {
+    const confirmMsg = t(lang, 'deleteFamilyConfirm') as string
+    if (!confirm(confirmMsg)) return
+    setDeletingFamily(true)
+    try {
+      const res = await fetch('/api/households', { method: 'DELETE' })
+      if (!res.ok) {
+        const d = await res.json()
+        alert(d.error || 'Error deleting family')
+        setDeletingFamily(false)
+        return
+      }
+      await signOut({ callbackUrl: '/auth/register' })
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+      setDeletingFamily(false)
+    }
+  }
+
   function openEditModal(user: User) {
     setEditingUser(user)
     setShowEditModal(true)
@@ -144,11 +205,11 @@ export default function UsersPage(){
   const isManager = isAdmin || (session?.user as any)?.role === 'MANAGER'
 
   return (
-    <div style={{ 
-      padding: 'clamp(12px, 3vw, 24px)', 
-      maxWidth: '1000px', 
-      margin: '0 auto', 
-      fontFamily: 'system-ui' 
+    <div style={{
+      padding: 'clamp(12px, 3vw, 24px)',
+      maxWidth: '1000px',
+      margin: '0 auto',
+      fontFamily: 'system-ui'
     }}>
       <div style={{ marginBottom: 'clamp(16px, 4vw, 32px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
@@ -173,28 +234,46 @@ export default function UsersPage(){
             {t(lang, 'back')}
           </button>
           <LanguageToggle />
-          {isManager && (
-            <button
-              onClick={() => setShowInviteModal(true)}
-              style={{
-                padding: '10px 16px',
-                background: '#667eea',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: 'clamp(13px, 3.5vw, 14px)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                minHeight: '40px',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              {t(lang, 'inviteMember')}
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {isManager && (
+              <button
+                onClick={() => setShowAddMemberModal(true)}
+                style={{
+                  padding: '10px 16px',
+                  background: '#10B981',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: 'clamp(13px, 3.5vw, 14px)',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  color: 'white',
+                  minHeight: '40px',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                {t(lang, 'addMemberManually')}
+              </button>
+            )}
+            {isManager && (
+              <button
+                onClick={() => setShowInviteModal(true)}
+                style={{
+                  padding: '10px 16px',
+                  background: '#667eea',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: 'clamp(13px, 3.5vw, 14px)',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  color: 'white',
+                  minHeight: '40px',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                {t(lang, 'inviteMember')}
+              </button>
+            )}
+          </div>
         </div>
         <h1 style={{
           fontSize: 'clamp(24px, 6vw, 36px)',
@@ -215,16 +294,17 @@ export default function UsersPage(){
           <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>{t(lang, 'loading')}</div>
         </div>
       ) : (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', 
-          gap: 'clamp(12px, 3vw, 20px)' 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
+          gap: 'clamp(12px, 3vw, 20px)'
         }}>
           {users.map(user => {
             const isCurrentUser = (session?.user as any)?.id === user.id
-            
+            const isPending = !!(user as any).setupToken
+
             return (
-              <div 
+              <div
                 key={user.id}
                 style={{
                   background: 'white',
@@ -261,12 +341,30 @@ export default function UsersPage(){
                   </div>
                 )}
 
+                {isPending && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    left: '12px',
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '11px',
+                    fontWeight: '700'
+                  }}>
+                    {t(lang, 'pendingSetup')}
+                  </div>
+                )}
+
                 {/* Avatar */}
                 <div style={{
                   width: 'clamp(64px, 16vw, 80px)',
                   height: 'clamp(64px, 16vw, 80px)',
                   borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${getGradientColors(user.name || user.email)})`,
+                  background: isPending
+                    ? 'linear-gradient(135deg, #D1D5DB, #9CA3AF)'
+                    : `linear-gradient(135deg, ${getGradientColors(user.name || user.email)})`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -275,7 +373,7 @@ export default function UsersPage(){
                   color: 'white',
                   margin: '0 auto clamp(12px, 3vw, 16px)'
                 }}>
-                  {(user.name || user.email).charAt(0).toUpperCase()}
+                  {isPending ? '⏳' : (user.name || user.email).charAt(0).toUpperCase()}
                 </div>
 
                 {/* User Info */}
@@ -288,15 +386,15 @@ export default function UsersPage(){
                   }}>
                     {user.name || t(lang, 'unnamed')}
                   </div>
-                  <div style={{ 
-                    fontSize: 'clamp(12px, 3vw, 14px)', 
+                  <div style={{
+                    fontSize: 'clamp(12px, 3vw, 14px)',
                     color: '#666',
                     marginBottom: '8px',
                     wordBreak: 'break-all'
                   }}>
                     {user.email}
                   </div>
-                  
+
                   {/* Role Badge */}
                   <div style={{
                     display: 'inline-block',
@@ -321,9 +419,9 @@ export default function UsersPage(){
                   borderTop: '1px solid #E5E7EB'
                 }}>
                   {t(lang, 'memberSince')} {new Date(user.createdAt).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric' 
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
                   })}
                 </div>
 
@@ -374,7 +472,7 @@ export default function UsersPage(){
                       </button>
                     )}
                     </div>
-                    {!isCurrentUser && (
+                    {!isCurrentUser && !isPending && (
                       <button
                         onClick={() => { setResetTarget(user); setResetPassword('') }}
                         style={{
@@ -399,6 +497,34 @@ export default function UsersPage(){
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Delete Family button - ADMIN only */}
+      {isAdmin && (
+        <div style={{ marginTop: '48px', paddingTop: '32px', borderTop: '2px solid #FEE2E2' }}>
+          <button
+            onClick={deleteFamily}
+            disabled={deletingFamily}
+            style={{
+              padding: '14px 24px',
+              background: deletingFamily ? '#9CA3AF' : '#FEE2E2',
+              border: '2px solid #FECACA',
+              borderRadius: '12px',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: deletingFamily ? 'not-allowed' : 'pointer',
+              color: '#991B1B',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
+            {deletingFamily ? t(lang, 'deletingFamily') : t(lang, 'deleteFamily')}
+          </button>
+          <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '8px' }}>
+            {lang === 'he'
+              ? 'פעולה זו תמחק את כל המשפחה לצמיתות ולא ניתן לבטלה.'
+              : 'This will permanently delete the entire family and cannot be undone.'}
+          </p>
         </div>
       )}
 
@@ -472,9 +598,9 @@ export default function UsersPage(){
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button
-                onClick={() => updateUser(editingUser.id, { 
-                  name: editingUser.name, 
-                  role: editingUser.role 
+                onClick={() => updateUser(editingUser.id, {
+                  name: editingUser.name,
+                  role: editingUser.role
                 })}
                 style={{
                   flex: 1,
@@ -510,6 +636,148 @@ export default function UsersPage(){
                 {t(lang, 'cancel')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Member Manually Modal */}
+      {showAddMemberModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px',
+            padding: 'clamp(16px, 4vw, 32px)', maxWidth: '500px',
+            width: '90%', margin: '16px'
+          }}>
+            <h2 style={{ margin: '0 0 8px', fontSize: 'clamp(18px, 4.5vw, 24px)', fontWeight: '700' }}>
+              {t(lang, 'addMemberTitle')}
+            </h2>
+            <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px' }}>
+              {t(lang, 'addMemberDesc')}
+            </p>
+
+            {!setupLink ? (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                      {t(lang, 'memberNameLabel')}
+                    </label>
+                    <input
+                      type="text"
+                      value={addName}
+                      onChange={e => setAddName(e.target.value)}
+                      style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }}
+                      placeholder={lang === 'he' ? 'ישראל ישראלי' : 'Jane Smith'}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                      {t(lang, 'memberEmailLabel')}
+                    </label>
+                    <input
+                      type="email"
+                      value={addEmail}
+                      onChange={e => setAddEmail(e.target.value)}
+                      style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }}
+                      placeholder="member@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                      {t(lang, 'memberRoleLabel')}
+                    </label>
+                    <select
+                      value={addRole}
+                      onChange={e => setAddRole(e.target.value)}
+                      style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '8px', fontSize: '16px' }}
+                    >
+                      <option value="MEMBER">{t(lang, 'roleMember')}</option>
+                      <option value="MANAGER">{t(lang, 'roleManager')}</option>
+                    </select>
+                  </div>
+                  {addError && (
+                    <div style={{ padding: '12px', borderRadius: '8px', background: '#FEE2E2', color: '#991B1B', fontWeight: '600', fontSize: '14px' }}>
+                      {addError}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button
+                    onClick={addMemberManually}
+                    disabled={addLoading || !addName.trim() || !addEmail.trim()}
+                    style={{
+                      flex: 1, padding: '14px',
+                      background: addLoading || !addName.trim() || !addEmail.trim() ? '#9CA3AF' : '#10B981',
+                      color: 'white', border: 'none', borderRadius: '8px',
+                      fontSize: '16px', fontWeight: '600',
+                      cursor: addLoading || !addName.trim() || !addEmail.trim() ? 'not-allowed' : 'pointer',
+                      minHeight: '48px'
+                    }}
+                  >
+                    {addLoading ? t(lang, 'addingMember') : t(lang, 'addMemberBtn')}
+                  </button>
+                  <button
+                    onClick={closeAddMember}
+                    style={{
+                      flex: 1, padding: '14px', background: '#F3F4F6',
+                      color: '#374151', border: 'none', borderRadius: '8px',
+                      fontSize: '16px', fontWeight: '600', cursor: 'pointer', minHeight: '48px'
+                    }}
+                  >
+                    {t(lang, 'cancel')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  background: '#F0FDF4', border: '2px solid #10B981',
+                  borderRadius: '12px', padding: '20px', marginBottom: '16px'
+                }}>
+                  <div style={{ fontSize: '14px', color: '#059669', marginBottom: '12px', fontWeight: '600' }}>
+                    {t(lang, 'setupLinkReady')}
+                  </div>
+                  <div style={{
+                    background: 'white', padding: '12px', borderRadius: '8px',
+                    fontSize: '13px', wordBreak: 'break-all', color: '#374151',
+                    fontFamily: 'monospace', userSelect: 'all'
+                  }}>
+                    {setupLink}
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(setupLink)
+                      alert(t(lang, 'linkCopied'))
+                    }}
+                    style={{
+                      width: '100%', marginTop: '12px', padding: '10px',
+                      background: '#10B981', color: 'white', border: 'none',
+                      borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+                    }}
+                  >
+                    {t(lang, 'copyLink')}
+                  </button>
+                </div>
+                <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+                  {t(lang, 'setupLinkDesc')}
+                </p>
+                <button
+                  onClick={closeAddMember}
+                  style={{
+                    width: '100%', padding: '14px', background: '#F3F4F6',
+                    color: '#374151', border: 'none', borderRadius: '8px',
+                    fontSize: '16px', fontWeight: '600', cursor: 'pointer'
+                  }}
+                >
+                  {t(lang, 'close')}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
