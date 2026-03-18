@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../../lib/prisma'
 import bcrypt from 'bcryptjs'
+import { v4 as uuidv4 } from 'uuid'
 import { rateLimit } from '../../../lib/rateLimit'
 import { seedHouseholdDefaults } from '../../../lib/defaultActivities'
+import { sendApprovalRequestEmail } from '../../../lib/email'
+import { PRODUCT_ADMIN_EMAIL } from '../../../lib/productAdmin'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
@@ -53,39 +56,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
 
-    // --- Path B: Create a new family (become ADMIN) ---
+    // --- Path B: Create a new family — requires product-admin approval ---
+    const approvalToken = uuidv4()
+    const resolvedFamilyName = (familyName && familyName.trim()) ? familyName.trim() : `${name.trim()}'s Family`
+
     const user = await prisma.user.create({
       data: {
         email,
         name: name.trim(),
         passwordHash: hash,
-        role: 'ADMIN'
+        role: 'ADMIN',
+        approvalStatus: 'PENDING',
+        approvalToken,
+        // Store desired family name temporarily in a metadata field via language
+        language: resolvedLang,
       }
     })
 
+    // Build the approval URL for the product admin
+    const proto = (req.headers['x-forwarded-proto'] as string) || 'http'
+    const host = req.headers.host || 'localhost:3000'
+    const approveUrl = `${proto}://${host}/api/admin/approve?token=${approvalToken}&family=${encodeURIComponent(resolvedFamilyName)}&lang=${resolvedLang}`
+
     try {
-      const hhName = (familyName && familyName.trim()) ? familyName.trim() : `${name.trim()}'s Family`
-      const hh = await prisma.household.create({ data: { name: hhName } })
-      await prisma.user.update({ where: { id: user.id }, data: { householdId: hh.id } })
-
-      // Seed default categories and activities for the new household
-      try {
-        await seedHouseholdDefaults(prisma, hh.id, user.id, resolvedLang)
-      } catch (seedErr) {
-        console.error('Failed to seed defaults (non-fatal):', seedErr)
-      }
-
-      return res.json({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        householdId: hh.id,
-        role: 'ADMIN'
-      })
-    } catch (hhErr) {
-      console.error('household creation failed', hhErr)
-      return res.json({ id: user.id, email: user.email, name: user.name })
+      await sendApprovalRequestEmail(
+        PRODUCT_ADMIN_EMAIL,
+        name.trim(),
+        email,
+        resolvedFamilyName,
+        approveUrl,
+      )
+    } catch (emailErr) {
+      console.error('Failed to send approval email (non-fatal):', emailErr)
     }
+
+    return res.json({ pending: true })
 
   }catch(e){
     console.error(e)

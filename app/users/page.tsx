@@ -189,7 +189,8 @@ export default function UsersPage(){
         setDeletingFamily(false)
         return
       }
-      await signOut({ callbackUrl: '/auth/register' })
+      await signOut({ redirect: false })
+      window.location.href = '/auth/register'
     } catch (err: any) {
       alert('Error: ' + err.message)
       setDeletingFamily(false)

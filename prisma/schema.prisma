@@ -13,6 +13,9 @@ model User {
   name            String?
   passwordHash    String?
   setupToken      String?             @unique
+  // Product-admin approval flow (only for new family heads)
+  approvalStatus  String              @default("APPROVED") // APPROVED | PENDING
+  approvalToken   String?             @unique
   householdId     String?
   household       Household?          @relation(fields: [householdId], references: [id])
   role            String              @default("MEMBER")
@@ -35,6 +38,8 @@ model Household {
   id         String     @id @default(cuid())
   name       String
   createdAt  DateTime   @default(now())
+  // Token for product-admin to revoke this household
+  revokeToken String?   @unique
   categories Category[]
   events     Event[]
   invites    Invite[]

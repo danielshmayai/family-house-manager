@@ -24,6 +24,18 @@ export default function Login() {
         setMsg(t(lang, 'welcomeBackMsg'))
         setTimeout(() => router.push('/'), 500)
       } else {
+        // Check if the failure is due to pending approval
+        try {
+          const statusRes = await fetch(`/api/auth/check-status?email=${encodeURIComponent(email)}`)
+          const statusData = await statusRes.json()
+          if (statusData.status === 'PENDING') {
+            setMsg(lang === 'he'
+              ? '⏳ חשבונך ממתין לאישור מנהל המוצר. תקבל/י אימייל לאחר האישור.'
+              : '⏳ Your account is pending approval. You will receive an email once approved.')
+            setLoading(false)
+            return
+          }
+        } catch { /* ignore */ }
         setMsg(t(lang, 'wrongCredentials'))
         setLoading(false)
       }
