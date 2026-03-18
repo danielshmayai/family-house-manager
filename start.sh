@@ -12,7 +12,7 @@ p.\$executeRawUnsafe('DELETE FROM _prisma_migrations WHERE migration_name = ?', 
 " 2>/dev/null || true
 
 # Run database migrations
-node node_modules/prisma/build/index.js migrate deploy
+node_modules/.bin/prisma migrate deploy
 
 # Start the Next.js server
 node server.js
