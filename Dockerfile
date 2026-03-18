@@ -37,6 +37,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # Create data directory for SQLite
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/data-migrations ./data-migrations
+
 # Script to run migrations then start
 COPY --from=builder /app/start.sh ./start.sh
 RUN sed -i 's/\r$//' start.sh && chmod +x start.sh

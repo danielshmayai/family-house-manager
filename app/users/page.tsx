@@ -27,13 +27,18 @@ export default function UsersPage(){
   const [inviteCode, setInviteCode] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
+  const [resetTarget, setResetTarget] = useState<User | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
 
-  useEffect(() => { loadUsers() }, [])
+  useEffect(() => { loadUsers() }, [session])
 
   async function loadUsers() {
+    const householdId = (session?.user as any)?.householdId
+    if (!householdId) return
     setLoading(true)
     try {
-      const res = await fetch('/api/users')
+      const res = await fetch(`/api/users?householdId=${householdId}`)
       const data = await res.json()
       setUsers(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -65,14 +70,14 @@ export default function UsersPage(){
 
   async function removeUser(userId: string) {
     if (!confirm(t(lang, 'removeConfirm'))) return
-    
+
     try {
       const res = await fetch('/api/users', {
-        method: 'PUT',
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId, householdId: null })
+        body: JSON.stringify({ id: userId })
       })
-      
+
       if (!res.ok) throw new Error('Failed to remove user')
       await loadUsers()
     } catch (err: any) {
@@ -104,6 +109,29 @@ export default function UsersPage(){
       alert('Error: ' + err.message)
     } finally {
       setInviteLoading(false)
+    }
+  }
+
+  async function resetUserPassword() {
+    if (!resetTarget || !resetPassword) return
+    setResetLoading(true)
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: resetTarget.id, newPassword: resetPassword })
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'Failed')
+      }
+      setResetTarget(null)
+      setResetPassword('')
+      alert(t(lang, 'passwordResetSuccess'))
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -301,11 +329,12 @@ export default function UsersPage(){
 
                 {/* Actions */}
                 {isManager && (
-                  <div style={{ 
-                    display: 'flex', 
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
                     gap: '8px',
-                    justifyContent: 'center'
                   }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       onClick={() => openEditModal(user)}
                       style={{
@@ -342,6 +371,27 @@ export default function UsersPage(){
                         }}
                       >
                         {t(lang, 'remove')}
+                      </button>
+                    )}
+                    </div>
+                    {!isCurrentUser && (
+                      <button
+                        onClick={() => { setResetTarget(user); setResetPassword('') }}
+                        style={{
+                          width: '100%',
+                          minHeight: '44px',
+                          padding: 'clamp(8px, 2vw, 10px)',
+                          background: '#FFF7ED',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: 'clamp(12px, 3vw, 14px)',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          color: '#92400E',
+                          WebkitTapHighlightColor: 'transparent'
+                        }}
+                      >
+                        🔑 {t(lang, 'resetPassword')}
                       </button>
                     )}
                   </div>
@@ -628,6 +678,74 @@ export default function UsersPage(){
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {resetTarget && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px',
+            padding: 'clamp(16px, 4vw, 32px)', maxWidth: '440px',
+            width: '90%', margin: '16px'
+          }}>
+            <div style={{ fontSize: '48px', textAlign: 'center', marginBottom: '8px' }}>🔑</div>
+            <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: '700', textAlign: 'center' }}>
+              {t(lang, 'resetPassword')}
+            </h2>
+            <p style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center', margin: '0 0 24px' }}>
+              {resetTarget.name || resetTarget.email}
+            </p>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                {t(lang, 'newPassword')}
+              </label>
+              <input
+                type="text"
+                value={resetPassword}
+                onChange={e => setResetPassword(e.target.value)}
+                placeholder={t(lang, 'newPasswordPlaceholder') as string}
+                style={{
+                  width: '100%', padding: '12px', border: '2px solid #E5E7EB',
+                  borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box'
+                }}
+              />
+              <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '6px 0 0' }}>
+                {t(lang, 'adminResetNote')}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button
+                onClick={resetUserPassword}
+                disabled={resetLoading || resetPassword.length < 6}
+                style={{
+                  flex: 1, padding: '14px',
+                  background: resetLoading || resetPassword.length < 6 ? '#9CA3AF' : '#667eea',
+                  color: 'white', border: 'none', borderRadius: '8px',
+                  fontSize: '15px', fontWeight: '700',
+                  cursor: resetLoading || resetPassword.length < 6 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {resetLoading ? '...' : t(lang, 'resetPassword')}
+              </button>
+              <button
+                onClick={() => { setResetTarget(null); setResetPassword('') }}
+                style={{
+                  flex: 1, padding: '14px', background: '#F3F4F6',
+                  color: '#374151', border: 'none', borderRadius: '8px',
+                  fontSize: '15px', fontWeight: '700', cursor: 'pointer'
+                }}
+              >
+                {t(lang, 'cancel')}
+              </button>
+            </div>
           </div>
         </div>
       )}

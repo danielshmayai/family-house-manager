@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     // Always respond success to avoid leaking which emails are registered
     if (!user) {
-      return NextResponse.json({ success: true, emailSent: emailConfigured })
+      return NextResponse.json({ success: true, emailSent: false })
     }
 
     const code = generateCode()
@@ -31,9 +31,21 @@ export async function POST(req: NextRequest) {
       data: { email: user.email, code, type: 'password-reset', expiresAt },
     })
 
-    await sendPasswordResetEmail(user.email, code)
+    // Try to send email — if it fails (e.g. sender domain not verified,
+    // or Resend only allows owner email with onboarding@resend.dev),
+    // fall back to returning the code directly in the response.
+    let emailSent = false
+    if (emailConfigured) {
+      try {
+        await sendPasswordResetEmail(user.email, code)
+        emailSent = true
+      } catch (emailErr) {
+        console.error('[forgot-password] Email send failed:', emailErr)
+        // emailSent stays false — code is returned below
+      }
+    }
 
-    return NextResponse.json({ success: true, emailSent: emailConfigured })
+    return NextResponse.json({ success: true, emailSent })
   } catch (err) {
     console.error('[forgot-password]', err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

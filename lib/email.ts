@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const FROM = process.env.EMAIL_FROM || 'FamFlow <noreply@famflow.app>'
+const FROM = process.env.EMAIL_FROM || 'onboarding@resend.dev'
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
 export async function sendPasswordResetEmail(email: string, code: string) {

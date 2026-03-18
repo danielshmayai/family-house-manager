@@ -11,8 +11,11 @@ p.\$executeRawUnsafe('DELETE FROM _prisma_migrations WHERE migration_name = ?', 
   .catch(() => p.\$disconnect());
 " 2>/dev/null || true
 
-# Run database migrations
+# Run database schema migrations (DDL)
 node_modules/.bin/prisma migrate deploy
+
+# Run data migrations (backward-compatible data upgrades)
+node scripts/migrate-data.js
 
 # Start the Next.js server
 node server.js

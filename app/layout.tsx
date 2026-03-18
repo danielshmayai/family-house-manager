@@ -49,10 +49,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="theme-color" content="#1a56db" />
         <script dangerouslySetInnerHTML={{
           __html: `
-            if ('serviceWorker' in navigator) {
+            if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
               window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').catch(() => {});
               });
+            } else if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
             }
           `
         }} />

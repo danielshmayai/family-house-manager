@@ -150,7 +150,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <div style={{ fontSize: 'clamp(48px, 12vw, 64px)', marginBottom: '16px' }}>
-              {emailSent ? '📬' : '🖥️'}
+              {'📬'}
             </div>
             <h1 style={{
               margin: '0 0 16px',
@@ -160,6 +160,7 @@ export default function ForgotPasswordPage() {
             }}>
               {t(lang, 'checkEmailTitle')}
             </h1>
+
             <p style={{ color: '#6B7280', fontSize: 'clamp(14px, 3.5vw, 16px)', margin: '0 0 24px', lineHeight: '1.6' }}>
               {emailSent
                 ? (t(lang, 'checkEmailDesc') as (e: string) => string)(email)
