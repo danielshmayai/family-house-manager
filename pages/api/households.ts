@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../lib/prisma'
 import { v4 as uuidv4 } from 'uuid'
 import { getSessionUser } from '../../lib/apiAuth'
+import { sendApprovalRequestEmail } from '../../lib/email'
+import { PRODUCT_ADMIN_EMAIL } from '../../lib/productAdmin'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
@@ -21,8 +23,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       await prisma.category.deleteMany({ where: { householdId } })
       await prisma.invite.deleteMany({ where: { householdId } })
-      await prisma.user.updateMany({ where: { householdId }, data: { householdId: null, role: 'MEMBER' } })
+      await prisma.user.updateMany({ where: { householdId }, data: { householdId: null, role: 'MEMBER', approvalStatus: 'PENDING' } })
       await prisma.household.delete({ where: { id: householdId } })
+
+      // Give the admin a new approvalToken so they can re-request a family via the register flow
+      const approvalToken = uuidv4()
+      const adminUser = await prisma.user.update({
+        where: { id: sessionUser.id },
+        data: { approvalToken, role: 'ADMIN' },
+      })
+
+      // Notify product admin so the user can be re-approved if desired
+      const proto = (req.headers['x-forwarded-proto'] as string) || 'http'
+      const host = req.headers.host || 'localhost:3000'
+      const defaultFamily = `${adminUser.name || adminUser.email}'s Family`
+      const approveUrl = `${proto}://${host}/api/admin/approve?token=${approvalToken}&family=${encodeURIComponent(defaultFamily)}&lang=${adminUser.language}`
+      try {
+        await sendApprovalRequestEmail(PRODUCT_ADMIN_EMAIL, adminUser.name || adminUser.email, adminUser.email, defaultFamily, approveUrl)
+      } catch (emailErr) {
+        console.error('Failed to send re-approval email (non-fatal):', emailErr)
+      }
 
       return res.json({ success: true })
     }

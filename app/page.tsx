@@ -381,8 +381,40 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* ─── Authenticated: No household state ─── */}
+      {status === 'authenticated' && !householdId && (
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'clamp(20px, 5vw, 32px) clamp(16px, 4vw, 24px)' }}>
+          <div style={{
+            background: 'white', borderRadius: '20px',
+            padding: 'clamp(40px, 10vw, 60px) clamp(16px, 4vw, 24px)',
+            textAlign: 'center', border: '2px dashed #E5E7EB',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🏡</div>
+            <h2 style={{ margin: '0 0 8px', fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: '800', color: '#1F2937' }}>
+              {t(lang, 'noFamilyTitle')}
+            </h2>
+            <p style={{ margin: '0 0 24px', color: '#6B7280', fontSize: 'clamp(14px, 3.5vw, 16px)', lineHeight: '1.5' }}>
+              {t(lang, 'noFamilyDesc')}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href="/auth/register" style={{
+                padding: '14px 28px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white', borderRadius: '14px',
+                fontSize: 'clamp(14px, 3.5vw, 16px)', fontWeight: '700',
+                textDecoration: 'none', display: 'inline-block',
+                boxShadow: '0 6px 20px rgba(102,126,234,0.35)'
+              }}>
+                {t(lang, 'createNewFamily')}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Authenticated: Stats Bar ─── */}
-      {status === 'authenticated' && (
+      {status === 'authenticated' && householdId && (
         <div style={{
           maxWidth: '800px',
           margin: 'clamp(-20px, -4vw, -24px) auto clamp(16px, 4vw, 24px)',
@@ -412,7 +444,7 @@ export default function HomePage() {
       )}
 
       {/* ─── Category Tabs ─── */}
-      {status === 'authenticated' && categories.length > 0 && (
+      {status === 'authenticated' && householdId && categories.length > 0 && (
         <div style={{
           maxWidth: '800px', margin: '0 auto clamp(16px, 4vw, 20px)',
           padding: '0 clamp(12px, 3vw, 20px)',
@@ -445,7 +477,7 @@ export default function HomePage() {
       )}
 
       {/* ─── Activities Grid ─── */}
-      {status === 'authenticated' && (
+      {status === 'authenticated' && householdId && (
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 clamp(12px, 3vw, 20px)' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: 'clamp(40px, 10vw, 60px) 0', color: '#666' }}>
@@ -672,7 +704,10 @@ export default function HomePage() {
               { path: '/', icon: '🏠', labelKey: 'navHome' as const },
               { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
               { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
-              ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : [])
+              ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : []),
+              ...(sessionUser?.email === (process.env.NEXT_PUBLIC_PRODUCT_ADMIN_EMAIL || 'danielshmayai@gmail.com')
+                ? [{ path: '/product-admin', icon: '🛡️', labelKey: 'navHome' as const, label: 'ניהול' }]
+                : [])
             ].map(item => (
               <button key={item.path} onClick={() => router.push(item.path)}
                 style={{
@@ -684,7 +719,7 @@ export default function HomePage() {
                   WebkitTapHighlightColor: 'transparent'
                 }}>
                 <span style={{ fontSize: 'clamp(20px, 5vw, 24px)' }}>{item.icon}</span>
-                {t(lang, item.labelKey)}
+                {(item as any).label || t(lang, item.labelKey)}
               </button>
             ))}
           </div>

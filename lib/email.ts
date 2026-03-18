@@ -57,10 +57,15 @@ export async function sendApprovalRequestEmail(
     </div>
   `
 
+  // Always log to server console as a fallback (visible in Vercel logs)
+  console.log(`\n[APPROVAL REQUEST] ${pendingName} <${pendingEmail}> — family: "${familyName}"\nApprove URL: ${approveUrl}\nSending to: ${adminEmail} | from: ${FROM} | resend configured: ${!!resend}\n`)
+
   if (resend) {
-    await resend.emails.send({ from: FROM, to: adminEmail, subject, html })
-  } else {
-    console.log(`\n[APPROVAL REQUEST] ${pendingName} <${pendingEmail}> wants to create family "${familyName}"\nApprove: ${approveUrl}\n`)
+    const result = await resend.emails.send({ from: FROM, to: adminEmail, subject, html })
+    if ((result as any).error) {
+      console.error('[APPROVAL REQUEST] Resend error:', JSON.stringify((result as any).error))
+      throw new Error(`Resend rejected the email: ${JSON.stringify((result as any).error)}`)
+    }
   }
 }
 
