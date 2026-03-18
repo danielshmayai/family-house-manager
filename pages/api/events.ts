@@ -93,6 +93,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ error: 'This activity requires a note' })
         }
 
+        // Enforce requiresPhoto
+        if (activity.requiresPhoto) {
+          let meta: any = {}
+          try { meta = JSON.parse(payload.metadata || '{}') } catch {}
+          if (!meta.photo) {
+            return res.status(400).json({ error: 'This activity requires a photo' })
+          }
+        }
+
         data.activityId = payload.activityId
 
         // Resolve points: use activity default unless client provides a valid positive value

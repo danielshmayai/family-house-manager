@@ -27,6 +27,7 @@ type Activity = {
   frequency: string
   isActive: boolean
   requiresNote?: boolean
+  requiresPhoto?: boolean
 }
 
 type EventItem = {
@@ -53,6 +54,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null)
   const [noteModal, setNoteModal] = useState<{ activity: Activity } | null>(null)
   const [noteInput, setNoteInput] = useState('')
+  const [photoInput, setPhotoInput] = useState<string | null>(null)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -109,15 +111,16 @@ export default function HomePage() {
   }, [status, loadData])
 
   function handleActivityTap(activity: Activity) {
-    if (activity.requiresNote) {
+    if (activity.requiresNote || activity.requiresPhoto) {
       setNoteInput('')
+      setPhotoInput(null)
       setNoteModal({ activity })
     } else {
       completeActivity(activity)
     }
   }
 
-  async function completeActivity(activity: Activity, note?: string) {
+  async function completeActivity(activity: Activity, note?: string, photo?: string) {
     setCompleting(activity.id)
 
     try {
@@ -135,8 +138,11 @@ export default function HomePage() {
         dayEnd: dayEnd.toISOString()
       }
 
-      if (note) {
-        payload.metadata = JSON.stringify({ note })
+      if (note || photo) {
+        const meta: any = {}
+        if (note) meta.note = note
+        if (photo) meta.photo = photo
+        payload.metadata = JSON.stringify(meta)
       }
 
       const res = await fetch('/api/events', {
@@ -634,7 +640,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ─── Note Modal ─── */}
+      {/* ─── Note / Photo Modal ─── */}
       {noteModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
@@ -653,24 +659,104 @@ export default function HomePage() {
               {noteModal.activity.name}
             </h3>
             <p style={{ margin: '0 0 16px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-              {t(lang, 'noteRequired')}
+              {noteModal.activity.requiresNote && noteModal.activity.requiresPhoto
+                ? t(lang, 'noteAndPhotoRequired')
+                : noteModal.activity.requiresNote
+                  ? t(lang, 'noteRequired')
+                  : t(lang, 'photoRequired')}
             </p>
-            <textarea
-              autoFocus
-              value={noteInput}
-              onChange={e => setNoteInput(e.target.value)}
-              placeholder={t(lang, 'addDetails') as string}
-              style={{
-                width: '100%', padding: '12px',
-                border: '2px solid #E5E7EB', borderRadius: '12px',
-                fontSize: '16px', fontFamily: 'system-ui',
-                minHeight: '100px', resize: 'vertical',
-                boxSizing: 'border-box', marginBottom: '16px'
-              }}
-            />
+
+            {/* Note textarea */}
+            {noteModal.activity.requiresNote && (
+              <textarea
+                autoFocus={!noteModal.activity.requiresPhoto}
+                value={noteInput}
+                onChange={e => setNoteInput(e.target.value)}
+                placeholder={t(lang, 'addDetails') as string}
+                style={{
+                  width: '100%', padding: '12px',
+                  border: '2px solid #E5E7EB', borderRadius: '12px',
+                  fontSize: '16px', fontFamily: 'system-ui',
+                  minHeight: '90px', resize: 'vertical',
+                  boxSizing: 'border-box', marginBottom: '16px'
+                }}
+              />
+            )}
+
+            {/* Photo input */}
+            {noteModal.activity.requiresPhoto && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px',
+                  fontSize: '14px', fontWeight: '700', color: '#374151'
+                }}>
+                  {t(lang, 'photoLabel')}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  id="photo-capture-input"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = ev => {
+                      // Compress via canvas
+                      const img = new Image()
+                      img.onload = () => {
+                        const canvas = document.createElement('canvas')
+                        const MAX = 800
+                        const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+                        canvas.width = img.width * scale
+                        canvas.height = img.height * scale
+                        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+                        setPhotoInput(canvas.toDataURL('image/jpeg', 0.7))
+                      }
+                      img.src = ev.target?.result as string
+                    }
+                    reader.readAsDataURL(file)
+                  }}
+                />
+                {photoInput ? (
+                  <div style={{ position: 'relative' }}>
+                    <img src={photoInput} alt="preview" style={{
+                      width: '100%', borderRadius: '12px', border: '2px solid #E5E7EB',
+                      maxHeight: '200px', objectFit: 'cover'
+                    }} />
+                    <button
+                      type="button"
+                      onClick={() => setPhotoInput(null)}
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: 'rgba(0,0,0,0.6)', color: 'white',
+                        border: 'none', borderRadius: '50%',
+                        width: '28px', height: '28px', cursor: 'pointer',
+                        fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >✕</button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('photo-capture-input')?.click()}
+                    style={{
+                      width: '100%', padding: '16px',
+                      border: '2px dashed #D1D5DB', borderRadius: '12px',
+                      background: '#F9FAFB', cursor: 'pointer',
+                      fontSize: '15px', color: '#6B7280', fontWeight: '600'
+                    }}
+                  >
+                    📷 {t(lang, 'takePhoto')}
+                  </button>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
-                onClick={() => setNoteModal(null)}
+                onClick={() => { setNoteModal(null); setPhotoInput(null) }}
                 style={{
                   flex: 1, padding: '12px', background: '#F3F4F6',
                   border: 'none', borderRadius: '12px', fontSize: '15px',
@@ -680,17 +766,30 @@ export default function HomePage() {
                 {t(lang, 'cancel')}
               </button>
               <button
-                disabled={!noteInput.trim()}
+                disabled={
+                  (noteModal.activity.requiresNote && !noteInput.trim()) ||
+                  (noteModal.activity.requiresPhoto && !photoInput)
+                }
                 onClick={() => {
                   const activity = noteModal.activity
+                  const note = noteInput.trim() || undefined
+                  const photo = photoInput || undefined
                   setNoteModal(null)
-                  completeActivity(activity, noteInput.trim())
+                  setPhotoInput(null)
+                  completeActivity(activity, note, photo)
                 }}
                 style={{
                   flex: 1, padding: '12px',
-                  background: noteInput.trim() ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#D1D5DB',
+                  background: (
+                    (noteModal.activity.requiresNote && !noteInput.trim()) ||
+                    (noteModal.activity.requiresPhoto && !photoInput)
+                  ) ? '#D1D5DB' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   border: 'none', borderRadius: '12px', fontSize: '15px',
-                  fontWeight: '700', cursor: noteInput.trim() ? 'pointer' : 'not-allowed',
+                  fontWeight: '700',
+                  cursor: (
+                    (noteModal.activity.requiresNote && !noteInput.trim()) ||
+                    (noteModal.activity.requiresPhoto && !photoInput)
+                  ) ? 'not-allowed' : 'pointer',
                   color: 'white'
                 }}
               >
