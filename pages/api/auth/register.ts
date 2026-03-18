@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../../lib/prisma'
 import bcrypt from 'bcryptjs'
 import { rateLimit } from '../../../lib/rateLimit'
+import { seedHouseholdDefaults } from '../../../lib/defaultActivities'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
@@ -65,6 +66,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const hhName = (familyName && familyName.trim()) ? familyName.trim() : `${name.trim()}'s Family`
       const hh = await prisma.household.create({ data: { name: hhName } })
       await prisma.user.update({ where: { id: user.id }, data: { householdId: hh.id } })
+
+      // Seed default categories and activities for the new household
+      try {
+        await seedHouseholdDefaults(prisma, hh.id, user.id)
+      } catch (seedErr) {
+        console.error('Failed to seed defaults (non-fatal):', seedErr)
+      }
 
       return res.json({
         id: user.id,

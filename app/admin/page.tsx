@@ -164,6 +164,37 @@ export default function Admin() {
     }
   }
 
+  const [resetting, setResetting] = useState(false)
+
+  async function resetToDefaults() {
+    if (!confirm(
+      '🔄 Reset to Default Activities?\n\n' +
+      'This will:\n' +
+      '• Delete ALL current categories & activities\n' +
+      '• Delete ALL completion history & points\n' +
+      '• Restore the original starter categories & activities\n\n' +
+      'This action CANNOT be undone!'
+    )) return
+
+    setResetting(true)
+    try {
+      const res = await fetch('/api/reset-defaults', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to reset')
+      }
+      await loadCategories()
+      alert('✅ Activities have been reset to defaults!')
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setResetting(false)
+    }
+  }
+
   function openCategoryModal(category?: Category) {
     setEditingCategory(category || {
       name: '',
@@ -309,25 +340,47 @@ export default function Admin() {
             {userRole === 'ADMIN' ? '👑 Admin' : '⭐ Manager'} — Add categories and activities for your family
           </p>
         </div>
-        <button
-          onClick={() => openCategoryModal()}
-          style={{
-            padding: 'clamp(10px, 2.5vw, 12px) clamp(16px, 4vw, 24px)',
-            minHeight: '44px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: 'clamp(14px, 3.5vw, 16px)',
-            fontWeight: '700',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            WebkitTapHighlightColor: 'transparent',
-            boxShadow: '0 4px 12px rgba(102,126,234,0.3)'
-          }}
-        >
-          ➕ New Category
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => openCategoryModal()}
+            style={{
+              padding: 'clamp(10px, 2.5vw, 12px) clamp(16px, 4vw, 24px)',
+              minHeight: '44px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: 'clamp(14px, 3.5vw, 16px)',
+              fontWeight: '700',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              WebkitTapHighlightColor: 'transparent',
+              boxShadow: '0 4px 12px rgba(102,126,234,0.3)'
+            }}
+          >
+            ➕ New Category
+          </button>
+          <button
+            onClick={resetToDefaults}
+            disabled={resetting}
+            style={{
+              padding: 'clamp(10px, 2.5vw, 12px) clamp(16px, 4vw, 24px)',
+              minHeight: '44px',
+              background: resetting ? '#E5E7EB' : '#FEF3C7',
+              color: '#92400E',
+              border: '2px solid #FCD34D',
+              borderRadius: '12px',
+              fontSize: 'clamp(13px, 3vw, 14px)',
+              fontWeight: '700',
+              cursor: resetting ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              WebkitTapHighlightColor: 'transparent',
+              opacity: resetting ? 0.6 : 1
+            }}
+          >
+            {resetting ? '⏳ Resetting...' : '🔄 Reset to Defaults'}
+          </button>
+        </div>
       </div>
 
       {loading ? (
