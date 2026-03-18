@@ -3,6 +3,9 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import IconDisplay from '@/components/IconDisplay'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLang } from '@/lib/language-context'
+import { t } from '@/lib/i18n'
 
 type Category = {
   id: string
@@ -39,6 +42,7 @@ type EventItem = {
 export default function HomePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { lang } = useLang()
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [events, setEvents] = useState<EventItem[]>([])
@@ -99,14 +103,12 @@ export default function HomePage() {
     if (status === 'authenticated') {
       loadData()
     }
-    // unauthenticated: nothing to load, loading stays false
   }, [status, loadData])
 
   async function completeActivity(activity: Activity) {
     setCompleting(activity.id)
 
     try {
-      // Send client's local day boundaries for proper timezone-aware dedup
       const now = new Date()
       const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
       const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
@@ -130,7 +132,7 @@ export default function HomePage() {
       if (!res.ok) {
         const error = await res.json()
         if (res.status === 409) {
-          showToastMessage('Already done today!', '✅')
+          showToastMessage(t(lang, 'alreadyDoneToday'), '✅')
         } else {
           throw new Error(error.error || 'Failed to complete activity')
         }
@@ -153,7 +155,7 @@ export default function HomePage() {
   }
 
   async function revertEvent(eventId: string, activityName: string, points: number) {
-    if (!confirm(`Undo "${activityName}"?\n\nThis will remove ${points} points and mark it as not done.`)) return
+    if (!confirm(t(lang, 'undoConfirm')(activityName, points))) return
 
     setReverting(eventId)
     try {
@@ -165,7 +167,7 @@ export default function HomePage() {
       }
 
       await loadData()
-      showToastMessage(`Reverted! -${points} points`, '↩️')
+      showToastMessage(t(lang, 'revertedMsg')(points), '↩️')
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -226,10 +228,11 @@ export default function HomePage() {
                   🏡 FamFlow
                 </h1>
                 <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 'clamp(13px, 3vw, 15px)' }}>
-                  The fun way to manage family chores!
+                  {t(lang, 'appTagline')}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
+                <LanguageToggle />
                 <a href="/auth/login" style={{
                   padding: 'clamp(10px, 2.5vw, 12px) clamp(14px, 3.5vw, 18px)',
                   background: 'rgba(255,255,255,0.25)',
@@ -242,7 +245,7 @@ export default function HomePage() {
                   display: 'inline-block',
                   WebkitTapHighlightColor: 'transparent'
                 }}>
-                  Sign In
+                  {t(lang, 'signIn')}
                 </a>
                 <a href="/auth/register" style={{
                   padding: 'clamp(10px, 2.5vw, 12px) clamp(14px, 3.5vw, 18px)',
@@ -256,7 +259,7 @@ export default function HomePage() {
                   display: 'inline-block',
                   WebkitTapHighlightColor: 'transparent'
                 }}>
-                  Sign Up 🌟
+                  {t(lang, 'signUp')}
                 </a>
               </div>
             </div>
@@ -267,10 +270,10 @@ export default function HomePage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 auto', minWidth: '0' }}>
                 <h1 style={{ margin: 0, fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: '800', wordBreak: 'break-word' }}>
-                  👋 Hey, {sessionUser?.name || 'there'}!
+                  {t(lang, 'greeting')(sessionUser?.name || 'there')}
                 </h1>
                 <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 'clamp(12px, 3vw, 14px)' }}>
-                  Let's earn some points today! 🌟
+                  {t(lang, 'earnPointsToday')}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
@@ -281,8 +284,9 @@ export default function HomePage() {
                   textAlign: 'center'
                 }}>
                   <div style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: '800', lineHeight: 1 }}>{totalPointsToday}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: '700', marginTop: '2px' }}>PTS TODAY ⭐</div>
+                  <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: '700', marginTop: '2px' }}>{t(lang, 'ptsToday')}</div>
                 </div>
+                <LanguageToggle />
                 <button
                   onClick={() => signOut({ callbackUrl: '/auth/login' })}
                   style={{
@@ -297,7 +301,7 @@ export default function HomePage() {
                     WebkitTapHighlightColor: 'transparent'
                   }}
                 >
-                  Sign Out
+                  {t(lang, 'signOut')}
                 </button>
               </div>
             </div>
@@ -310,11 +314,11 @@ export default function HomePage() {
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: 'clamp(20px, 5vw, 32px) clamp(16px, 4vw, 24px)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: '16px', marginBottom: '24px' }}>
             {[
-              { emoji: '⭐', title: 'Earn Points', desc: 'Complete family activities and rack up points daily' },
-              { emoji: '🏆', title: 'Compete & Win', desc: 'See who\'s the family champion on the live leaderboard' },
-              { emoji: '👨‍👩‍👧‍👦', title: 'Family Together', desc: 'Manage chores, cooking, pets and more as a team' },
+              { emoji: '⭐', titleKey: 'featureEarnTitle' as const, descKey: 'featureEarnDesc' as const },
+              { emoji: '🏆', titleKey: 'featureCompeteTitle' as const, descKey: 'featureCompeteDesc' as const },
+              { emoji: '👨‍👩‍👧‍👦', titleKey: 'featureFamilyTitle' as const, descKey: 'featureFamilyDesc' as const },
             ].map(f => (
-              <div key={f.title} style={{
+              <div key={f.titleKey} style={{
                 background: 'white',
                 borderRadius: '18px',
                 padding: '24px',
@@ -322,8 +326,8 @@ export default function HomePage() {
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '40px', marginBottom: '10px' }}>{f.emoji}</div>
-                <div style={{ fontWeight: '800', fontSize: '16px', marginBottom: '6px' }}>{f.title}</div>
-                <div style={{ color: '#6B7280', fontSize: '13px', lineHeight: '1.5' }}>{f.desc}</div>
+                <div style={{ fontWeight: '800', fontSize: '16px', marginBottom: '6px' }}>{t(lang, f.titleKey)}</div>
+                <div style={{ color: '#6B7280', fontSize: '13px', lineHeight: '1.5' }}>{t(lang, f.descKey)}</div>
               </div>
             ))}
           </div>
@@ -339,7 +343,7 @@ export default function HomePage() {
               boxShadow: '0 6px 20px rgba(102,126,234,0.4)',
               display: 'inline-block'
             }}>
-              🌟 Get Started — It's Free!
+              {t(lang, 'getStarted')}
             </a>
           </div>
         </div>
@@ -349,7 +353,7 @@ export default function HomePage() {
       {status === 'loading' && (
         <div style={{ textAlign: 'center', padding: '80px 0', color: '#666' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <div style={{ fontSize: '16px', fontWeight: '600' }}>Loading...</div>
+          <div style={{ fontSize: '16px', fontWeight: '600' }}>{t(lang, 'loading')}</div>
         </div>
       )}
 
@@ -369,15 +373,15 @@ export default function HomePage() {
           }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#667eea' }}>{completedToday}</div>
-              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>DONE TODAY</div>
+              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'doneToday')}</div>
             </div>
             <div style={{ textAlign: 'center', borderLeft: '1px solid #F3F4F6', borderRight: '1px solid #F3F4F6' }}>
               <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#10B981' }}>{todayActivities.length}</div>
-              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>AVAILABLE</div>
+              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'available')}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#F59E0B' }}>{categories.length}</div>
-              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>CATEGORIES</div>
+              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'categories')}</div>
             </div>
           </div>
         </div>
@@ -422,29 +426,27 @@ export default function HomePage() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: 'clamp(40px, 10vw, 60px) 0', color: '#666' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-              <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>Loading activities...</div>
+              <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>{t(lang, 'loadingActivities')}</div>
             </div>
           ) : categories.length === 0 ? (
             <div style={{ background: 'white', borderRadius: '20px', padding: 'clamp(40px, 10vw, 60px) clamp(16px, 4vw, 20px)', textAlign: 'center', border: '2px dashed #E5E7EB' }}>
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>📋</div>
-              <h3 style={{ margin: '0 0 8px', fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700' }}>No activities yet!</h3>
+              <h3 style={{ margin: '0 0 8px', fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700' }}>{t(lang, 'noActivitiesYet')}</h3>
               <p style={{ margin: '0 0 20px', color: '#6B7280', fontSize: 'clamp(14px, 3.5vw, 16px)', lineHeight: '1.5' }}>
-                {isManager
-                  ? 'Go to Manage to add categories and activities for your family.'
-                  : 'Ask your family manager to add some activities!'}
+                {isManager ? t(lang, 'noActivitiesManager') : t(lang, 'noActivitiesMember')}
               </p>
               {isManager && (
                 <button onClick={() => router.push('/admin')}
                   style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
-                  ⚙️ Manage Activities
+                  {t(lang, 'manageActivities')}
                 </button>
               )}
             </div>
           ) : todayActivities.length === 0 ? (
             <div style={{ background: 'white', borderRadius: '20px', padding: 'clamp(40px, 10vw, 60px) clamp(16px, 4vw, 20px)', textAlign: 'center', border: '2px dashed #E5E7EB' }}>
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>✅</div>
-              <h3 style={{ margin: '0 0 8px', fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700' }}>All done here!</h3>
-              <p style={{ margin: 0, color: '#6B7280' }}>No active activities in this category. Try another tab!</p>
+              <h3 style={{ margin: '0 0 8px', fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700' }}>{t(lang, 'allDoneHere')}</h3>
+              <p style={{ margin: 0, color: '#6B7280' }}>{t(lang, 'noActiveActivities')}</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(260px, 100%), 1fr))', gap: 'clamp(12px, 3vw, 16px)' }}>
@@ -484,7 +486,7 @@ export default function HomePage() {
                     {isCompleted && completionEvent && (
                       <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <div style={{ background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
-                          ✓ DONE
+                          {t(lang, 'doneBadge')}
                         </div>
                         <button
                           onClick={(e) => {
@@ -499,15 +501,14 @@ export default function HomePage() {
                             opacity: isRevertingThis ? 0.5 : 1,
                             WebkitTapHighlightColor: 'transparent'
                           }}
-                          title="Undo this completion"
                         >
-                          {isRevertingThis ? '⏳' : '↩️ Undo'}
+                          {isRevertingThis ? '⏳' : t(lang, 'undoBtn')}
                         </button>
                       </div>
                     )}
                     {isCompleted && !completionEvent && (
                       <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
-                        ✓ DONE
+                        {t(lang, 'doneBadge')}
                       </div>
                     )}
                     {isProcessing && (
@@ -542,23 +543,23 @@ export default function HomePage() {
           {events.length > 0 && (
             <div style={{ marginTop: 'clamp(24px, 6vw, 36px)', background: 'white', borderRadius: '18px', padding: 'clamp(16px, 4vw, 24px)', border: '2px solid #E5E7EB', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <h3 style={{ margin: '0 0 clamp(12px, 3vw, 16px)', fontSize: 'clamp(16px, 4vw, 18px)', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                📅 Today's Wins
+                {t(lang, 'todaysWins')}
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 2vw, 10px)' }}>
                 {events.slice(0, 10).map(event => (
                   <div key={event.id} style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', padding: 'clamp(10px, 2.5vw, 12px)', background: '#F9FAFB', borderRadius: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <IconDisplay icon={event.activity?.icon} fallback="⭐" size={18} />
                     <div style={{ flex: 1, minWidth: '120px' }}>
-                      <div style={{ fontWeight: '700', fontSize: 'clamp(13px, 3.5vw, 14px)' }}>{event.activity?.name || 'Activity completed'}</div>
+                      <div style={{ fontWeight: '700', fontSize: 'clamp(13px, 3.5vw, 14px)' }}>{event.activity?.name || t(lang, 'activityCompleted')}</div>
                       <div style={{ fontSize: 'clamp(10px, 2.5vw, 11px)', color: '#9CA3AF' }}>
-                        {new Date(event.occurredAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(event.occurredAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                     <div style={{ fontWeight: '800', color: '#10B981', fontSize: 'clamp(14px, 3.5vw, 16px)', flexShrink: 0 }}>
                       +{event.points} ⭐
                     </div>
                     <button
-                      onClick={() => revertEvent(event.id, event.activity?.name || 'Activity', event.points)}
+                      onClick={() => revertEvent(event.id, event.activity?.name || t(lang, 'activityCompleted'), event.points)}
                       disabled={reverting === event.id}
                       style={{
                         padding: '6px 12px',
@@ -574,9 +575,8 @@ export default function HomePage() {
                         opacity: reverting === event.id ? 0.5 : 1,
                         WebkitTapHighlightColor: 'transparent'
                       }}
-                      title="Undo this action"
                     >
-                      {reverting === event.id ? '⏳' : '↩️ Undo'}
+                      {reverting === event.id ? '⏳' : t(lang, 'undoBtn')}
                     </button>
                   </div>
                 ))}
@@ -596,10 +596,10 @@ export default function HomePage() {
         }}>
           <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
             {[
-              { path: '/', icon: '🏠', label: 'Home' },
-              { path: '/leaderboard', icon: '🏆', label: 'Rankings' },
-              { path: '/users', icon: '👥', label: 'Family' },
-              ...(isManager ? [{ path: '/admin', icon: '⚙️', label: 'Manage' }] : [])
+              { path: '/', icon: '🏠', labelKey: 'navHome' as const },
+              { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
+              { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
+              ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : [])
             ].map(item => (
               <button key={item.path} onClick={() => router.push(item.path)}
                 style={{
@@ -611,7 +611,7 @@ export default function HomePage() {
                   WebkitTapHighlightColor: 'transparent'
                 }}>
                 <span style={{ fontSize: 'clamp(20px, 5vw, 24px)' }}>{item.icon}</span>
-                {item.label}
+                {t(lang, item.labelKey)}
               </button>
             ))}
           </div>

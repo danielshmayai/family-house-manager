@@ -2,6 +2,9 @@
 import React, { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/language-context'
+import { t } from '@/lib/i18n'
+import LanguageToggle from '@/components/LanguageToggle'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -9,6 +12,7 @@ export default function Login() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { lang } = useLang()
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -17,14 +21,14 @@ export default function Login() {
     try {
       const res = await signIn('credentials', { redirect: false, email, password })
       if ((res as any)?.ok) {
-        setMsg('✓ Welcome back!')
+        setMsg(t(lang, 'welcomeBackMsg'))
         setTimeout(() => router.push('/'), 500)
       } else {
-        setMsg("Hmm, that email or password doesn't match. Try again! 🤔")
+        setMsg(t(lang, 'wrongCredentials'))
         setLoading(false)
       }
     } catch (err) {
-      setMsg('Network error. Please try again.')
+      setMsg(t(lang, 'networkError'))
       setLoading(false)
     }
   }
@@ -51,6 +55,11 @@ export default function Login() {
       padding: '20px',
       fontFamily: 'system-ui'
     }}>
+      {/* Language toggle top-right */}
+      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 100 }}>
+        <LanguageToggle />
+      </div>
+
       <div style={{
         background: 'white',
         borderRadius: '28px',
@@ -69,16 +78,16 @@ export default function Login() {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent'
         }}>
-          Welcome Back!
+          {t(lang, 'welcomeBack')}
         </h1>
         <p style={{ color: '#6B7280', fontSize: 'clamp(14px, 3.5vw, 16px)', margin: '0 0 32px' }}>
-          Your family is waiting for you! 🏠✨
+          {t(lang, 'familyWaiting')}
         </p>
 
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '700', color: '#374151' }}>
-              Email Address
+              {t(lang, 'emailAddress')}
             </label>
             <input
               placeholder="you@example.com"
@@ -92,10 +101,10 @@ export default function Login() {
 
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: '700', color: '#374151' }}>
-              Password
+              {t(lang, 'passwordLabel')}
             </label>
             <input
-              placeholder="Your secret password"
+              placeholder="••••••••"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -122,7 +131,7 @@ export default function Login() {
               WebkitTapHighlightColor: 'transparent'
             }}
           >
-            {loading ? '🔑 Signing in...' : "🚀 Let's Go!"}
+            {loading ? t(lang, 'signingIn') : t(lang, 'letsGo')}
           </button>
         </form>
 
@@ -142,7 +151,7 @@ export default function Login() {
 
         <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #F3F4F6' }}>
           <p style={{ color: '#9CA3AF', fontSize: '14px', margin: '0 0 12px' }}>
-            New to FamFlow?
+            {t(lang, 'newToFamFlow')}
           </p>
           <a
             href="/auth/register"
@@ -158,7 +167,7 @@ export default function Login() {
               boxShadow: '0 4px 12px rgba(102,126,234,0.3)'
             }}
           >
-            🌟 Create Your Family Account
+            {t(lang, 'createAccount')}
           </a>
         </div>
       </div>

@@ -3,6 +3,9 @@ import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
+import { useLang } from '@/lib/language-context'
+import { t } from '@/lib/i18n'
+import LanguageToggle from '@/components/LanguageToggle'
 
 type Category = {
   id: string
@@ -35,6 +38,7 @@ type Activity = {
 export default function Admin() {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { lang } = useLang()
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showActivityModal, setShowActivityModal] = useState(false)
@@ -73,7 +77,7 @@ export default function Admin() {
   }
 
   async function saveCategory() {
-    if (!editingCategory?.name) return alert('Name is required')
+    if (!editingCategory?.name) return alert(t(lang, 'nameRequired2'))
 
     try {
       const method = editingCategory.id ? 'PUT' : 'POST'
@@ -100,10 +104,7 @@ export default function Admin() {
   async function deleteCategory(id: string) {
     const cat = categories.find(c => c.id === id)
     const actCount = cat?.activities?.length || 0
-    const msg = actCount > 0
-      ? `Delete "${cat?.name}" category?\n\nThis will also delete:\n• ${actCount} activit${actCount === 1 ? 'y' : 'ies'}\n• All related completion events & points\n\nThis action CANNOT be undone!`
-      : `Delete "${cat?.name}" category?\n\nThis action CANNOT be undone!`
-    if (!confirm(msg)) return
+    if (!confirm(t(lang, 'deleteCategoryConfirm')(cat?.name || '', actCount))) return
 
     try {
       const res = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' })
@@ -111,7 +112,7 @@ export default function Admin() {
       const result = await res.json()
       const info = result.cascaded
         ? `Deleted! (${result.cascaded.activitiesDeleted} activities, ${result.cascaded.eventsDeleted} events removed)`
-        : 'Deleted!'
+        : 'Deleted!' // generic server result, not translated
       alert(info)
       await loadCategories()
     } catch (err: any) {
@@ -121,7 +122,7 @@ export default function Admin() {
 
   async function saveActivity() {
     if (!editingActivity?.name || !editingActivity?.categoryId) {
-      return alert('Name and category are required')
+      return alert(t(lang, 'nameAndCatRequired'))
     }
 
     try {
@@ -147,8 +148,7 @@ export default function Admin() {
 
   async function deleteActivity(id: string) {
     const activity = categories.flatMap(c => c.activities || []).find(a => a.id === id)
-    const msg = `Delete "${activity?.name}" activity?\n\nThis will also delete all related completion events & points.\n\nThis action CANNOT be undone!`
-    if (!confirm(msg)) return
+    if (!confirm(t(lang, 'deleteActivityConfirm')(activity?.name || ''))) return
 
     try {
       const res = await fetch(`/api/activities?id=${id}`, { method: 'DELETE' })
@@ -167,14 +167,7 @@ export default function Admin() {
   const [resetting, setResetting] = useState(false)
 
   async function resetToDefaults() {
-    if (!confirm(
-      '🔄 Reset to Default Activities?\n\n' +
-      'This will:\n' +
-      '• Delete ALL current categories & activities\n' +
-      '• Delete ALL completion history & points\n' +
-      '• Restore the original starter categories & activities\n\n' +
-      'This action CANNOT be undone!'
-    )) return
+    if (!confirm(t(lang, 'resetConfirm'))) return
 
     setResetting(true)
     try {
@@ -187,7 +180,7 @@ export default function Admin() {
         throw new Error(err.error || 'Failed to reset')
       }
       await loadCategories()
-      alert('✅ Activities have been reset to defaults!')
+      alert(t(lang, 'resetSuccess'))
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally {
@@ -256,7 +249,7 @@ export default function Admin() {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <div style={{ color: '#666', fontWeight: '600' }}>Loading...</div>
+          <div style={{ color: '#666', fontWeight: '600' }}>{t(lang, 'loading')}</div>
         </div>
       </div>
     )
@@ -283,10 +276,10 @@ export default function Admin() {
         }}>
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>🚫</div>
           <h2 style={{ margin: '0 0 12px', fontSize: '24px', fontWeight: '800', color: '#1F2937' }}>
-            Managers Only!
+            {t(lang, 'managersOnly')}
           </h2>
           <p style={{ color: '#6B7280', margin: '0 0 24px', lineHeight: '1.5' }}>
-            Only family managers and admins can access this area. Ask your family manager for access!
+            {t(lang, 'managersOnlyDesc')}
           </p>
           <button
             onClick={() => router.push('/')}
@@ -301,7 +294,7 @@ export default function Admin() {
               cursor: 'pointer'
             }}
           >
-            Go Home 🏠
+            {t(lang, 'goHome')}
           </button>
         </div>
       </div>
@@ -310,7 +303,7 @@ export default function Admin() {
 
   return (
     <div style={{ padding: 'clamp(12px, 3vw, 24px)', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui' }}>
-      <div style={{ marginBottom: '12px' }}>
+      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button
           onClick={() => router.push('/')}
           style={{
@@ -329,15 +322,16 @@ export default function Admin() {
             WebkitTapHighlightColor: 'transparent'
           }}
         >
-          ← Home
+          {t(lang, 'backHome')}
         </button>
+        <LanguageToggle />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 32px)', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 'clamp(20px, 5vw, 32px)', fontWeight: '800', margin: '0 0 4px' }}>⚙️ Manage Activities</h1>
+          <h1 style={{ fontSize: 'clamp(20px, 5vw, 32px)', fontWeight: '800', margin: '0 0 4px' }}>{t(lang, 'manageActivitiesTitle')}</h1>
           <p style={{ margin: 0, color: '#6B7280', fontSize: '14px' }}>
-            {userRole === 'ADMIN' ? '👑 Admin' : '⭐ Manager'} — Add categories and activities for your family
+            {t(lang, 'adminRoleLabel')(userRole || '')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -358,7 +352,7 @@ export default function Admin() {
               boxShadow: '0 4px 12px rgba(102,126,234,0.3)'
             }}
           >
-            ➕ New Category
+            {t(lang, 'newCategory')}
           </button>
           <button
             onClick={resetToDefaults}
@@ -378,7 +372,7 @@ export default function Admin() {
               opacity: resetting ? 0.6 : 1
             }}
           >
-            {resetting ? '⏳ Resetting...' : '🔄 Reset to Defaults'}
+            {resetting ? t(lang, 'resetting') : t(lang, 'resetToDefaults')}
           </button>
         </div>
       </div>
@@ -386,7 +380,7 @@ export default function Admin() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏳</div>
-          <div>Loading...</div>
+          <div>{t(lang, 'loading')}</div>
         </div>
       ) : categories.length === 0 ? (
         <div style={{
@@ -398,10 +392,10 @@ export default function Admin() {
         }}>
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>📋</div>
           <h3 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: '700', color: '#1F2937' }}>
-            No categories yet!
+            {t(lang, 'noCategoriesYet')}
           </h3>
           <p style={{ margin: '0 0 24px', color: '#6B7280', lineHeight: '1.5' }}>
-            Create your first category to start adding activities for your family.
+            {t(lang, 'noCategoriesDesc')}
           </p>
           <button
             onClick={() => openCategoryModal()}
@@ -416,7 +410,7 @@ export default function Admin() {
               cursor: 'pointer'
             }}
           >
-            ➕ Create First Category
+            {t(lang, 'createFirstCategory')}
           </button>
         </div>
       ) : (
@@ -442,7 +436,7 @@ export default function Admin() {
                       <p style={{ margin: '4px 0 0', fontSize: 'clamp(12px, 3vw, 14px)', color: '#666', wordBreak: 'break-word' }}>{category.description}</p>
                     )}
                     {!category.isActive && (
-                      <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: '600' }}>INACTIVE</span>
+                      <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: '600' }}>{t(lang, 'inactive')}</span>
                     )}
                   </div>
                 </div>
@@ -465,7 +459,7 @@ export default function Admin() {
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E5E7EB' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h4 style={{ margin: 0, fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: '600', color: '#666' }}>
-                    ACTIVITIES ({category.activities?.length || 0})
+                    {t(lang, 'activitiesCount2')(category.activities?.length || 0)}
                   </h4>
                   <button
                     onClick={() => openActivityModal(category.id)}
@@ -482,7 +476,7 @@ export default function Admin() {
                       WebkitTapHighlightColor: 'transparent'
                     }}
                   >
-                    + Add
+                    {t(lang, 'addActivity')}
                   </button>
                 </div>
 
@@ -508,7 +502,7 @@ export default function Admin() {
                             <div style={{ fontSize: 'clamp(13px, 3.5vw, 14px)', fontWeight: '600', wordBreak: 'break-word' }}>{activity.name}</div>
                             <div style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', color: '#666' }}>
                               ⭐ {activity.defaultPoints} pts · {activity.frequency}
-                              {!activity.isActive && ' · INACTIVE'}
+                              {!activity.isActive && ` · ${t(lang, 'inactive')}`}
                             </div>
                           </div>
                         </div>
@@ -531,7 +525,7 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div style={{ textAlign: 'center', padding: '20px', color: '#999', fontSize: '14px' }}>
-                    No activities yet — click "+ Add" to create one!
+                    {t(lang, 'noActivitiesInCat')}
                   </div>
                 )}
               </div>
@@ -552,12 +546,12 @@ export default function Admin() {
             maxWidth: '500px', width: '100%', maxHeight: '90vh', overflow: 'auto'
           }}>
             <h2 style={{ margin: '0 0 clamp(16px, 4vw, 24px)', fontSize: 'clamp(18px, 4.5vw, 24px)', fontWeight: '800' }}>
-              {editingCategory.id ? '✏️ Edit Category' : '➕ New Category'}
+              {editingCategory.id ? t(lang, 'editCategory') : t(lang, 'newCategoryModal')}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Icon</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'iconLabel')}</label>
 
                 {/* Current icon preview */}
                 {editingCategory.icon && (
@@ -568,7 +562,7 @@ export default function Admin() {
                     {isImageIcon(editingCategory.icon) && (
                       <button onClick={() => setEditingCategory({ ...editingCategory, icon: '📌' })}
                         style={{ padding: '6px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: '#991B1B' }}>
-                        ✕ Remove image
+                        {t(lang, 'removeImage')}
                       </button>
                     )}
                   </div>
@@ -591,7 +585,7 @@ export default function Admin() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
                   <input
                     type="text"
-                    placeholder="Or type any emoji..."
+                    placeholder={t(lang, 'orTypeEmoji') as string}
                     maxLength={4}
                     style={{ flex: 1, padding: '10px 12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '18px', boxSizing: 'border-box' }}
                     onKeyDown={e => {
@@ -612,12 +606,12 @@ export default function Admin() {
                   onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'category'); e.target.value = '' }} />
                 <button onClick={() => categoryFileRef.current?.click()}
                   style={{ padding: '8px 16px', background: '#EEF2FF', border: '2px dashed #667eea', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: '#4338CA', width: '100%', WebkitTapHighlightColor: 'transparent' }}>
-                  📷 Upload custom image (PNG, JPG, etc.)
+                  {t(lang, 'uploadImage')}
                 </button>
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Color</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'colorLabel')}</label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {colorOptions.map(color => (
                     <button key={color} onClick={() => setEditingCategory({ ...editingCategory, color })}
@@ -631,14 +625,14 @@ export default function Admin() {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Name *</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'nameRequired')}</label>
                 <input type="text" value={editingCategory.name || ''} onChange={e => setEditingCategory({ ...editingCategory, name: e.target.value })}
                   style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '16px', boxSizing: 'border-box' }}
                   placeholder="e.g., Household Chores" />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Description</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'descriptionLabel')}</label>
                 <textarea value={editingCategory.description || ''} onChange={e => setEditingCategory({ ...editingCategory, description: e.target.value })}
                   style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '16px', minHeight: '80px', boxSizing: 'border-box', resize: 'vertical' }}
                   placeholder="Optional description..." />
@@ -647,18 +641,18 @@ export default function Admin() {
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                 <input type="checkbox" checked={editingCategory.isActive !== false} onChange={e => setEditingCategory({ ...editingCategory, isActive: e.target.checked })}
                   style={{ width: '20px', height: '20px' }} />
-                <span style={{ fontSize: '14px', fontWeight: '700' }}>Active (visible to family)</span>
+                <span style={{ fontSize: '14px', fontWeight: '700' }}>{t(lang, 'activeLabel')}</span>
               </label>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: 'clamp(16px, 4vw, 24px)' }}>
               <button onClick={saveCategory}
                 style={{ flex: 1, minHeight: '48px', padding: '12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-                Save
+                {t(lang, 'save')}
               </button>
               <button onClick={() => { setShowCategoryModal(false); setEditingCategory(null) }}
                 style={{ flex: 1, minHeight: '48px', padding: '12px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-                Cancel
+                {t(lang, 'cancel')}
               </button>
             </div>
           </div>
@@ -677,12 +671,12 @@ export default function Admin() {
             maxWidth: '500px', width: '100%', maxHeight: '90vh', overflow: 'auto'
           }}>
             <h2 style={{ margin: '0 0 24px', fontSize: 'clamp(18px, 4.5vw, 24px)', fontWeight: '800' }}>
-              {editingActivity.id ? '✏️ Edit Activity' : '➕ New Activity'}
+              {editingActivity.id ? t(lang, 'editActivity') : t(lang, 'newActivityModal')}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Icon</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'iconLabel')}</label>
 
                 {/* Current icon preview */}
                 {editingActivity.icon && (
@@ -693,7 +687,7 @@ export default function Admin() {
                     {isImageIcon(editingActivity.icon) && (
                       <button onClick={() => setEditingActivity({ ...editingActivity, icon: '✓' })}
                         style={{ padding: '6px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: '#991B1B' }}>
-                        ✕ Remove image
+                        {t(lang, 'removeImage')}
                       </button>
                     )}
                   </div>
@@ -716,7 +710,7 @@ export default function Admin() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
                   <input
                     type="text"
-                    placeholder="Or type any emoji..."
+                    placeholder={t(lang, 'orTypeEmoji') as string}
                     maxLength={4}
                     style={{ flex: 1, padding: '10px 12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '18px', boxSizing: 'border-box' }}
                     onKeyDown={e => {
@@ -737,19 +731,19 @@ export default function Admin() {
                   onChange={e => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'activity'); e.target.value = '' }} />
                 <button onClick={() => activityFileRef.current?.click()}
                   style={{ padding: '8px 16px', background: '#EEF2FF', border: '2px dashed #667eea', borderRadius: '10px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: '#4338CA', width: '100%', WebkitTapHighlightColor: 'transparent' }}>
-                  📷 Upload custom image (PNG, JPG, etc.)
+                  {t(lang, 'uploadImage')}
                 </button>
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Name *</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'nameRequired')}</label>
                 <input type="text" value={editingActivity.name || ''} onChange={e => setEditingActivity({ ...editingActivity, name: e.target.value })}
                   style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '16px', boxSizing: 'border-box' }}
                   placeholder="e.g., Wash dishes" />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Description</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'descriptionLabel')}</label>
                 <textarea value={editingActivity.description || ''} onChange={e => setEditingActivity({ ...editingActivity, description: e.target.value })}
                   style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '16px', minHeight: '60px', boxSizing: 'border-box', resize: 'vertical' }}
                   placeholder="Optional description..." />
@@ -757,29 +751,29 @@ export default function Admin() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>⭐ Points</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'pointsLabel2')}</label>
                   <input type="number" value={editingActivity.defaultPoints || 10} onChange={e => setEditingActivity({ ...editingActivity, defaultPoints: Number(e.target.value) })}
                     style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '16px', boxSizing: 'border-box' }}
                     min={1} max={1000} />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>Frequency</label>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>{t(lang, 'frequencyLabel')}</label>
                   <select value={editingActivity.frequency || 'DAILY'} onChange={e => setEditingActivity({ ...editingActivity, frequency: e.target.value })}
                     style={{ width: '100%', padding: '12px', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '16px', boxSizing: 'border-box' }}>
-                    <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="ANYTIME">Anytime</option>
+                    <option value="DAILY">{t(lang, 'freqDaily')}</option>
+                    <option value="WEEKLY">{t(lang, 'freqWeekly')}</option>
+                    <option value="MONTHLY">{t(lang, 'freqMonthly')}</option>
+                    <option value="ANYTIME">{t(lang, 'freqAnytime')}</option>
                   </select>
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[
-                  { key: 'isActive', label: 'Active (visible to family)' },
-                  { key: 'requiresNote', label: 'Requires a note when completing' },
-                  { key: 'requiresPhoto', label: 'Requires a photo when completing' }
+                  { key: 'isActive', label: t(lang, 'activeLabel') as string },
+                  { key: 'requiresNote', label: t(lang, 'requiresNote') as string },
+                  { key: 'requiresPhoto', label: t(lang, 'requiresPhoto') as string }
                 ].map(({ key, label }) => (
                   <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                     <input type="checkbox"
@@ -795,11 +789,11 @@ export default function Admin() {
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button onClick={saveActivity}
                 style={{ flex: 1, minHeight: '48px', padding: '12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-                Save Activity
+                {t(lang, 'saveActivity')}
               </button>
               <button onClick={() => { setShowActivityModal(false); setEditingActivity(null) }}
                 style={{ flex: 1, minHeight: '48px', padding: '12px', background: '#F3F4F6', color: '#374151', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-                Cancel
+                {t(lang, 'cancel')}
               </button>
             </div>
           </div>

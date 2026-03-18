@@ -3,6 +3,8 @@ import React from 'react'
 import Providers from '../components/Providers'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../lib/auth'
+import { cookies } from 'next/headers'
+import type { Lang } from '../lib/i18n'
 
 export const metadata = {
   title: 'Family House Manager',
@@ -31,8 +33,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   let session: any = null
   try { session = await getServerSession(authOptions) } catch (e) { /* ignore */ }
 
+  const cookieStore = await cookies()
+  const cookieLang = cookieStore.get('lang')?.value as Lang | undefined
+  const lang: Lang = (session?.user as any)?.language || cookieLang || 'he'
+  const dir = lang === 'he' ? 'rtl' : 'ltr'
+
   return (
-    <html lang="he" dir="rtl" suppressHydrationWarning>
+    <html lang={lang} dir={dir} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <link rel="manifest" href="/manifest.json" />
@@ -51,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         }} />
       </head>
       <body style={{ margin: 0, padding: 0, overflowX: 'hidden' }} suppressHydrationWarning>
-        <Providers session={session}>
+        <Providers session={session} defaultLang={lang}>
           <main style={{ minHeight: '100vh', padding: 0 }}>{children}</main>
         </Providers>
       </body>

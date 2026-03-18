@@ -2,6 +2,9 @@
 import React, { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/language-context'
+import { t } from '@/lib/i18n'
+import LanguageToggle from '@/components/LanguageToggle'
 
 type Path = 'choose' | 'create' | 'join'
 
@@ -15,6 +18,7 @@ export default function Register() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { lang } = useLang()
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -36,7 +40,7 @@ export default function Register() {
         setLoading(false)
         return
       }
-      setMsg('✓ Account created! Signing you in...')
+      setMsg(t(lang, 'accountCreated'))
       const signInResult = await signIn('credentials', { redirect: false, email, password })
       if (signInResult?.error) {
         setMsg('Account created but sign-in failed. Please use the Sign in button.')
@@ -45,7 +49,7 @@ export default function Register() {
       }
       setTimeout(() => router.push('/'), 800)
     } catch (err) {
-      setMsg('Network error. Please try again.')
+      setMsg(t(lang, 'networkError'))
       setLoading(false)
     }
   }
@@ -81,6 +85,9 @@ export default function Register() {
         padding: '20px',
         fontFamily: 'system-ui'
       }}>
+        <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 100 }}>
+          <LanguageToggle />
+        </div>
         <div style={{
           background: 'white',
           borderRadius: '28px',
@@ -99,10 +106,10 @@ export default function Register() {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            Welcome to FamFlow!
+            {t(lang, 'welcomeToFamFlow')}
           </h1>
           <p style={{ color: '#6B7280', fontSize: 'clamp(14px, 3.5vw, 16px)', margin: '0 0 32px', lineHeight: '1.5' }}>
-            The fun way to manage chores and compete for the family crown! 👑
+            {t(lang, 'registerTagline')}
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
@@ -127,9 +134,9 @@ export default function Register() {
             >
               <span style={{ fontSize: 'clamp(32px, 8vw, 44px)' }}>🌟</span>
               <div>
-                <div>Start a New Family</div>
+                <div>{t(lang, 'startNewFamily')}</div>
                 <div style={{ fontSize: '13px', opacity: 0.9, fontWeight: '500', marginTop: '4px' }}>
-                  Create your household &amp; become the manager
+                  {t(lang, 'startNewFamilyDesc')}
                 </div>
               </div>
             </button>
@@ -155,18 +162,18 @@ export default function Register() {
             >
               <span style={{ fontSize: 'clamp(32px, 8vw, 44px)' }}>🎟️</span>
               <div>
-                <div>Join a Family</div>
+                <div>{t(lang, 'joinFamily')}</div>
                 <div style={{ fontSize: '13px', opacity: 0.9, fontWeight: '500', marginTop: '4px' }}>
-                  Got an invite code? Join your family here
+                  {t(lang, 'joinFamilyDesc')}
                 </div>
               </div>
             </button>
           </div>
 
           <p style={{ color: '#9CA3AF', fontSize: '14px', margin: 0 }}>
-            Already have an account?{' '}
+            {t(lang, 'alreadyHaveAccount')}{' '}
             <a href="/auth/login" style={{ color: '#667eea', fontWeight: '700', textDecoration: 'none' }}>
-              Sign in →
+              {t(lang, 'signInArrow')}
             </a>
           </p>
         </div>
@@ -188,6 +195,9 @@ export default function Register() {
       padding: '20px',
       fontFamily: 'system-ui'
     }}>
+      <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 100 }}>
+        <LanguageToggle />
+      </div>
       <div style={{
         background: 'white',
         borderRadius: '28px',
@@ -213,7 +223,7 @@ export default function Register() {
             WebkitTapHighlightColor: 'transparent'
           }}
         >
-          ← Back
+          {t(lang, 'back')}
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
@@ -221,18 +231,16 @@ export default function Register() {
             {isCreate ? '🌟' : '🎟️'}
           </div>
           <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#1F2937' }}>
-            {isCreate ? 'Create Your Family' : 'Join Your Family'}
+            {isCreate ? t(lang, 'createYourFamily') : t(lang, 'joinYourFamily')}
           </h1>
           <p style={{ color: '#6B7280', margin: 0, fontSize: '14px' }}>
-            {isCreate
-              ? "You'll be the family manager with full control 👑"
-              : 'Enter the invite code your manager shared with you 🎉'}
+            {isCreate ? t(lang, 'youllBeManager') : t(lang, 'enterInviteCode')}
           </p>
         </div>
 
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={labelStyle}>Your Name</label>
+            <label style={labelStyle}>{t(lang, 'yourName')}</label>
             <input
               placeholder="e.g., Alex Smith"
               value={name}
@@ -244,7 +252,7 @@ export default function Register() {
           </div>
 
           <div>
-            <label style={labelStyle}>Email Address</label>
+            <label style={labelStyle}>{t(lang, 'emailAddress')}</label>
             <input
               placeholder="you@example.com"
               type="email"
@@ -256,9 +264,9 @@ export default function Register() {
           </div>
 
           <div>
-            <label style={labelStyle}>Password</label>
+            <label style={labelStyle}>{t(lang, 'passwordLabel')}</label>
             <input
-              placeholder="At least 6 characters"
+              placeholder="••••••••"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -271,7 +279,8 @@ export default function Register() {
           {isCreate && (
             <div>
               <label style={labelStyle}>
-                Family Name <span style={{ color: '#9CA3AF', fontWeight: '500' }}>(optional)</span>
+                {t(lang, 'familyNameLabel')}{' '}
+                <span style={{ color: '#9CA3AF', fontWeight: '500' }}>{t(lang, 'optional')}</span>
               </label>
               <input
                 placeholder={name ? `${name}'s Family` : 'e.g., The Smith Family'}
@@ -284,7 +293,7 @@ export default function Register() {
 
           {!isCreate && (
             <div>
-              <label style={labelStyle}>Invite Code</label>
+              <label style={labelStyle}>{t(lang, 'inviteCodeLabel')}</label>
               <input
                 placeholder="e.g., AB12CD34"
                 value={inviteCode}
@@ -301,7 +310,7 @@ export default function Register() {
                 maxLength={8}
               />
               <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '6px 0 0' }}>
-                Ask your family manager to generate an invite code from the Team page
+                {t(lang, 'askManager')}
               </p>
             </div>
           )}
@@ -328,7 +337,7 @@ export default function Register() {
               WebkitTapHighlightColor: 'transparent'
             }}
           >
-            {loading ? '✨ Setting up...' : isCreate ? '🌟 Create My Family!' : '🎉 Join Family!'}
+            {loading ? t(lang, 'settingUp') : isCreate ? t(lang, 'createMyFamily') : t(lang, 'joinFamilyBtn')}
           </button>
         </form>
 
@@ -348,9 +357,9 @@ export default function Register() {
         )}
 
         <p style={{ color: '#9CA3AF', fontSize: '14px', margin: '20px 0 0', textAlign: 'center' }}>
-          Already have an account?{' '}
+          {t(lang, 'alreadyHaveAccount')}{' '}
           <a href="/auth/login" style={{ color: '#667eea', fontWeight: '700', textDecoration: 'none' }}>
-            Sign in →
+            {t(lang, 'signInArrow')}
           </a>
         </p>
       </div>

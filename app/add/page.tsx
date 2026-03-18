@@ -2,6 +2,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/language-context'
+import { t } from '@/lib/i18n'
+import LanguageToggle from '@/components/LanguageToggle'
 
 type Category = {
   id: string
@@ -21,6 +24,7 @@ type Activity = {
 export default function QuickCompletePage(){
   const { data: session } = useSession()
   const router = useRouter()
+  const { lang } = useLang()
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
   const [selectedActivityId, setSelectedActivityId] = useState<string>('')
@@ -55,7 +59,7 @@ export default function QuickCompletePage(){
     }
 
     if (!selectedActivityId) {
-      setMsg('Please select an activity')
+      setMsg(t(lang, 'pleaseSelect'))
       return
     }
 
@@ -102,7 +106,7 @@ export default function QuickCompletePage(){
         throw new Error(error.error || 'Failed to complete activity')
       }
 
-      setMsg(`✅ Activity completed! +${selectedActivity.defaultPoints} points`)
+      setMsg(t(lang, 'activityCompletedMsg')(selectedActivity.defaultPoints))
       setNote('')
       
       // Redirect to home after 1.5 seconds
@@ -125,7 +129,7 @@ export default function QuickCompletePage(){
       padding: 'clamp(12px, 3vw, 24px)'
     }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button
             onClick={() => router.push('/')}
             style={{
@@ -144,8 +148,9 @@ export default function QuickCompletePage(){
               WebkitTapHighlightColor: 'transparent'
             }}
           >
-            ← Back
+            {t(lang, 'back')}
           </button>
+          <LanguageToggle />
         </div>
         {/* Header */}
         <div style={{ marginBottom: 'clamp(16px, 4vw, 32px)', textAlign: 'center' }}>
@@ -157,10 +162,10 @@ export default function QuickCompletePage(){
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            ⚡ Quick Complete
+            {t(lang, 'quickComplete')}
           </h1>
           <p style={{ color: '#666', margin: 0, fontSize: 'clamp(13px, 3.5vw, 16px)' }}>
-            Log an activity you just finished
+            {t(lang, 'logActivity')}
           </p>
         </div>
 
@@ -181,7 +186,7 @@ export default function QuickCompletePage(){
               fontWeight: '700',
               color: '#374151'
             }}>
-              Category
+              {t(lang, 'categoryLabel')}
             </label>
             <div style={{
               display: 'grid',
@@ -230,7 +235,7 @@ export default function QuickCompletePage(){
               fontWeight: '700',
               color: '#374151'
             }}>
-              Activity *
+              {t(lang, 'activityLabel')}
             </label>
             <select
               value={selectedActivityId}
@@ -248,7 +253,7 @@ export default function QuickCompletePage(){
                 background: 'white'
               }}
             >
-              <option value="">Select an activity...</option>
+              <option value="">{t(lang, 'selectActivity')}</option>
               {activities.map((activity: Activity) => (
                 <option key={activity.id} value={activity.id}>
                   {activity.icon || '✓'} {activity.name} (+{activity.defaultPoints} pts)
@@ -266,12 +271,12 @@ export default function QuickCompletePage(){
               fontWeight: '700',
               color: '#374151'
             }}>
-              Note (Optional)
+              {t(lang, 'noteOptional')}
             </label>
             <textarea
               value={note}
               onChange={e => setNote(e.target.value)}
-              placeholder="Add any additional details..."
+              placeholder={t(lang, 'addDetails') as string}
               style={{
                 width: '100%',
                 padding: 'clamp(12px, 3vw, 14px)',
@@ -322,7 +327,7 @@ export default function QuickCompletePage(){
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
-              {loading ? '⏳ Saving...' : '✓ Complete Activity'}
+              {loading ? t(lang, 'savingActivity') : t(lang, 'completeActivity')}
             </button>
             <button
               type="button"
@@ -340,7 +345,7 @@ export default function QuickCompletePage(){
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
-              Cancel
+              {t(lang, 'cancel')}
             </button>
           </div>
         </form>
@@ -355,10 +360,10 @@ export default function QuickCompletePage(){
           textAlign: 'center'
         }}>
           <div style={{ fontSize: 'clamp(12px, 3vw, 14px)', color: '#666', marginBottom: '8px' }}>
-            💡 Tip
+            {t(lang, 'tipLabel')}
           </div>
           <div style={{ fontSize: '16px', fontWeight: '600', color: '#374151' }}>
-            You can also complete activities directly from the home page by clicking on any activity card!
+            {t(lang, 'tipText')}
           </div>
         </div>
       </div>

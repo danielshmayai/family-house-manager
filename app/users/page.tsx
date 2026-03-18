@@ -2,6 +2,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useLang } from '@/lib/language-context'
+import { t } from '@/lib/i18n'
+import LanguageToggle from '@/components/LanguageToggle'
 
 type User = {
   id: string
@@ -15,6 +18,7 @@ type User = {
 export default function UsersPage(){
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
+  const { lang } = useLang()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -60,7 +64,7 @@ export default function UsersPage(){
   }
 
   async function removeUser(userId: string) {
-    if (!confirm('Remove this user from the household?')) return
+    if (!confirm(t(lang, 'removeConfirm'))) return
     
     try {
       const res = await fetch('/api/users', {
@@ -138,8 +142,9 @@ export default function UsersPage(){
               WebkitTapHighlightColor: 'transparent'
             }}
           >
-            ← Back
+            {t(lang, 'back')}
           </button>
+          <LanguageToggle />
           {isManager && (
             <button
               onClick={() => setShowInviteModal(true)}
@@ -159,27 +164,27 @@ export default function UsersPage(){
                 WebkitTapHighlightColor: 'transparent'
               }}
             >
-              ➕ Invite Member
+              {t(lang, 'inviteMember')}
             </button>
           )}
         </div>
-        <h1 style={{ 
-          fontSize: 'clamp(24px, 6vw, 36px)', 
-          fontWeight: '800', 
+        <h1 style={{
+          fontSize: 'clamp(24px, 6vw, 36px)',
+          fontWeight: '800',
           margin: '0 0 8px',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent'
         }}>
-          👥 Team Members
+          {t(lang, 'teamMembers')}
         </h1>
-        <p style={{ color: '#666', margin: 0, fontSize: 'clamp(13px, 3.5vw, 16px)' }}>Manage your household members and their roles</p>
+        <p style={{ color: '#666', margin: 0, fontSize: 'clamp(13px, 3.5vw, 16px)' }}>{t(lang, 'manageMembers')}</p>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: 'clamp(40px, 10vw, 60px) 0', color: '#666' }}>
           <div style={{ fontSize: 'clamp(36px, 10vw, 48px)', marginBottom: '16px' }}>⏳</div>
-          <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>Loading...</div>
+          <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>{t(lang, 'loading')}</div>
         </div>
       ) : (
         <div style={{ 
@@ -224,7 +229,7 @@ export default function UsersPage(){
                     fontSize: '12px',
                     fontWeight: '700'
                   }}>
-                    YOU
+                    {t(lang, 'youBadge')}
                   </div>
                 )}
 
@@ -247,13 +252,13 @@ export default function UsersPage(){
 
                 {/* User Info */}
                 <div style={{ textAlign: 'center', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
-                  <div style={{ 
-                    fontSize: 'clamp(16px, 4vw, 20px)', 
-                    fontWeight: '700', 
+                  <div style={{
+                    fontSize: 'clamp(16px, 4vw, 20px)',
+                    fontWeight: '700',
                     marginBottom: '4px',
                     wordBreak: 'break-word'
                   }}>
-                    {user.name || 'Unnamed User'}
+                    {user.name || t(lang, 'unnamed')}
                   </div>
                   <div style={{ 
                     fontSize: 'clamp(12px, 3vw, 14px)', 
@@ -274,7 +279,7 @@ export default function UsersPage(){
                     background: user.role === 'ADMIN' ? '#FEF3C7' : user.role === 'MANAGER' ? '#E0E7FF' : '#DBEAFE',
                     color: user.role === 'ADMIN' ? '#92400E' : user.role === 'MANAGER' ? '#3730A3' : '#1E40AF'
                   }}>
-                    {user.role === 'ADMIN' ? '👑 ADMIN' : user.role === 'MANAGER' ? '⭐ MANAGER' : '👤 MEMBER'}
+                    {user.role === 'ADMIN' ? t(lang, 'roleAdmin') : user.role === 'MANAGER' ? t(lang, 'roleManager') : t(lang, 'roleMember')}
                   </div>
                 </div>
 
@@ -287,7 +292,7 @@ export default function UsersPage(){
                   paddingTop: 'clamp(10px, 2.5vw, 12px)',
                   borderTop: '1px solid #E5E7EB'
                 }}>
-                  Member since {new Date(user.createdAt).toLocaleDateString('en-US', { 
+                  {t(lang, 'memberSince')} {new Date(user.createdAt).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
                     month: 'short', 
                     day: 'numeric', 
                     year: 'numeric' 
@@ -317,7 +322,7 @@ export default function UsersPage(){
                         WebkitTapHighlightColor: 'transparent'
                       }}
                     >
-                      ✏️ Edit
+                      {t(lang, 'edit')}
                     </button>
                     {!isCurrentUser && (
                       <button
@@ -336,7 +341,7 @@ export default function UsersPage(){
                           WebkitTapHighlightColor: 'transparent'
                         }}
                       >
-                        🗑️ Remove
+                        {t(lang, 'remove')}
                       </button>
                     )}
                   </div>
@@ -370,13 +375,13 @@ export default function UsersPage(){
             margin: '16px'
           }}>
             <h2 style={{ margin: '0 0 clamp(16px, 4vw, 24px)', fontSize: 'clamp(18px, 4.5vw, 24px)', fontWeight: '700' }}>
-              Edit User
+              {t(lang, 'editUser')}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
-                  Name
+                  {t(lang, 'nameLabel')}
                 </label>
                 <input
                   type="text"
@@ -395,7 +400,7 @@ export default function UsersPage(){
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
-                  Role
+                  {t(lang, 'roleLabel')}
                 </label>
                 <select
                   value={editingUser.role}
@@ -408,9 +413,9 @@ export default function UsersPage(){
                     fontSize: '16px'
                   }}
                 >
-                  <option value="MEMBER">👤 Member</option>
-                  <option value="MANAGER">⭐ Manager</option>
-                  <option value="ADMIN">👑 Admin</option>
+                  <option value="MEMBER">{t(lang, 'roleMember')}</option>
+                  <option value="MANAGER">{t(lang, 'roleManager')}</option>
+                  <option value="ADMIN">{t(lang, 'roleAdmin')}</option>
                 </select>
               </div>
             </div>
@@ -433,7 +438,7 @@ export default function UsersPage(){
                   cursor: 'pointer'
                 }}
               >
-                Save Changes
+                {t(lang, 'saveChanges')}
               </button>
               <button
                 onClick={() => {
@@ -452,7 +457,7 @@ export default function UsersPage(){
                   cursor: 'pointer'
                 }}
               >
-                Cancel
+                {t(lang, 'cancel')}
               </button>
             </div>
           </div>
@@ -482,14 +487,14 @@ export default function UsersPage(){
             margin: '16px'
           }}>
             <h2 style={{ margin: '0 0 clamp(16px, 4vw, 24px)', fontSize: 'clamp(18px, 4.5vw, 24px)', fontWeight: '700' }}>
-              Invite New Member
+              {t(lang, 'inviteNewMember')}
             </h2>
 
             {!inviteCode ? (
               <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
-                    Email (Optional)
+                    {t(lang, 'emailOptional')}
                   </label>
                   <input
                     type="email"
@@ -505,7 +510,7 @@ export default function UsersPage(){
                     placeholder="member@example.com"
                   />
                   <p style={{ fontSize: '12px', color: '#666', margin: '8px 0 0' }}>
-                    Optional: Track who the invite is for
+                    {t(lang, 'emailOptionalNote')}
                   </p>
                 </div>
 
@@ -526,7 +531,7 @@ export default function UsersPage(){
                       minHeight: '48px'
                     }}
                   >
-                    {inviteLoading ? 'Generating...' : 'Generate Invite Code'}
+                    {inviteLoading ? t(lang, 'generating') : t(lang, 'generateInviteCode')}
                   </button>
                   <button
                     onClick={() => {
@@ -546,7 +551,7 @@ export default function UsersPage(){
                       minHeight: '48px'
                     }}
                   >
-                    Cancel
+                    {t(lang, 'cancel')}
                   </button>
                 </div>
               </>
@@ -560,7 +565,7 @@ export default function UsersPage(){
                   marginBottom: '16px'
                 }}>
                   <div style={{ fontSize: '14px', color: '#059669', marginBottom: '12px', fontWeight: '600' }}>
-                    ✅ Invite Code Generated!
+                    {t(lang, 'inviteCodeGenerated')}
                   </div>
                   <div style={{
                     background: 'white',
@@ -578,7 +583,7 @@ export default function UsersPage(){
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(inviteCode)
-                      alert('Invite code copied to clipboard!')
+                      alert(t(lang, 'codeCopied'))
                     }}
                     style={{
                       width: '100%',
@@ -593,12 +598,12 @@ export default function UsersPage(){
                       cursor: 'pointer'
                     }}
                   >
-                    📋 Copy Code
+                    {t(lang, 'copyCode')}
                   </button>
                 </div>
 
                 <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
-                  Share this code with the new member. They can use it during registration to join your household.
+                  {t(lang, 'shareCode')}
                 </p>
 
                 <button
@@ -619,7 +624,7 @@ export default function UsersPage(){
                     cursor: 'pointer'
                   }}
                 >
-                  Close
+                  {t(lang, 'close')}
                 </button>
               </>
             )}

@@ -23,6 +23,7 @@ export const authOptions: AuthOptions = {
           email: user.email,
           role: user.role,
           householdId: user.householdId,
+          language: user.language,
         }
       },
     }),
@@ -38,6 +39,7 @@ export const authOptions: AuthOptions = {
           email: (user as any).email,
           role: (user as any).role,
           householdId: (user as any).householdId,
+          language: (user as any).language,
         }
       }
       return token
