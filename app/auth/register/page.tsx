@@ -25,7 +25,7 @@ export default function Register() {
     setLoading(true)
     setMsg('')
     try {
-      const body: any = { email, password, name }
+      const body: any = { email, password, name, lang }
       if (path === 'create' && familyName) body.familyName = familyName
       if (path === 'join') body.inviteCode = inviteCode
 

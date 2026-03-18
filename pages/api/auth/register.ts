@@ -9,7 +9,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') return res.status(405).end()
     if (rateLimit(req, res, { max: 5, windowMs: 60_000, keyPrefix: 'register' })) return
 
-    const { email, password, name, inviteCode, familyName } = req.body
+    const { email, password, name, inviteCode, familyName, lang } = req.body
+    const resolvedLang: string = (lang === 'en' || lang === 'he') ? lang : (req.cookies?.lang ?? 'he')
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' })
     if (!name || name.trim().length < 2) return res.status(400).json({ error: 'Please provide your name (at least 2 characters)' })
 
@@ -69,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Seed default categories and activities for the new household
       try {
-        await seedHouseholdDefaults(prisma, hh.id, user.id)
+        await seedHouseholdDefaults(prisma, hh.id, user.id, resolvedLang)
       } catch (seedErr) {
         console.error('Failed to seed defaults (non-fatal):', seedErr)
       }
