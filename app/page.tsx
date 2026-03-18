@@ -704,7 +704,10 @@ export default function HomePage() {
               { path: '/', icon: '🏠', labelKey: 'navHome' as const },
               { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
               { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
-              ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : [])
+              ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : []),
+              ...(sessionUser?.email === (process.env.NEXT_PUBLIC_PRODUCT_ADMIN_EMAIL || 'danielshmayai@gmail.com')
+                ? [{ path: '/product-admin', icon: '🛡️', labelKey: 'navHome' as const, label: 'ניהול' }]
+                : [])
             ].map(item => (
               <button key={item.path} onClick={() => router.push(item.path)}
                 style={{
@@ -716,7 +719,7 @@ export default function HomePage() {
                   WebkitTapHighlightColor: 'transparent'
                 }}>
                 <span style={{ fontSize: 'clamp(20px, 5vw, 24px)' }}>{item.icon}</span>
-                {t(lang, item.labelKey)}
+                {(item as any).label || t(lang, item.labelKey)}
               </button>
             ))}
           </div>
