@@ -6,6 +6,7 @@ import IconDisplay from '@/components/IconDisplay'
 import LanguageToggle from '@/components/LanguageToggle'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
+import { compressImage } from '@/lib/compressImage'
 
 type Category = {
   id: string
@@ -26,6 +27,8 @@ type Activity = {
   defaultPoints: number
   frequency: string
   isActive: boolean
+  requiresNote?: boolean
+  requiresPhoto?: boolean
 }
 
 type EventItem = {
@@ -50,6 +53,9 @@ export default function HomePage() {
   const [completing, setCompleting] = useState<string | null>(null)
   const [reverting, setReverting] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; emoji: string } | null>(null)
+  const [noteModal, setNoteModal] = useState<{ activity: Activity } | null>(null)
+  const [noteInput, setNoteInput] = useState('')
+  const [photoInput, setPhotoInput] = useState<string | null>(null)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -105,7 +111,17 @@ export default function HomePage() {
     }
   }, [status, loadData])
 
-  async function completeActivity(activity: Activity) {
+  function handleActivityTap(activity: Activity) {
+    if (activity.requiresNote || activity.requiresPhoto) {
+      setNoteInput('')
+      setPhotoInput(null)
+      setNoteModal({ activity })
+    } else {
+      completeActivity(activity)
+    }
+  }
+
+  async function completeActivity(activity: Activity, note?: string, photo?: string) {
     setCompleting(activity.id)
 
     try {
@@ -121,6 +137,13 @@ export default function HomePage() {
         householdId,
         dayStart: dayStart.toISOString(),
         dayEnd: dayEnd.toISOString()
+      }
+
+      if (note || photo) {
+        const meta: any = {}
+        if (note) meta.note = note
+        if (photo) meta.photo = photo
+        payload.metadata = JSON.stringify(meta)
       }
 
       const res = await fetch('/api/events', {
@@ -471,7 +494,7 @@ export default function HomePage() {
                       WebkitTapHighlightColor: 'transparent',
                       boxShadow: isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.06)'
                     }}
-                    onClick={() => !isCompleted && !isProcessing && completeActivity(activity)}
+                    onClick={() => !isCompleted && !isProcessing && handleActivityTap(activity)}
                     onMouseEnter={e => {
                       if (!isCompleted && !isProcessing) {
                         e.currentTarget.style.transform = 'translateY(-4px)'
@@ -614,6 +637,152 @@ export default function HomePage() {
                 {t(lang, item.labelKey)}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Note / Photo Modal ─── */}
+      {noteModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px',
+            padding: '24px', width: '100%', maxWidth: '400px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px', textAlign: 'center' }}>
+              {noteModal.activity.icon || '📝'}
+            </div>
+            <h3 style={{ margin: '0 0 4px', textAlign: 'center', fontSize: '18px', fontWeight: '700' }}>
+              {noteModal.activity.name}
+            </h3>
+            <p style={{ margin: '0 0 16px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
+              {noteModal.activity.requiresNote && noteModal.activity.requiresPhoto
+                ? t(lang, 'noteAndPhotoRequired')
+                : noteModal.activity.requiresNote
+                  ? t(lang, 'noteRequired')
+                  : t(lang, 'photoRequired')}
+            </p>
+
+            {/* Note textarea */}
+            {noteModal.activity.requiresNote && (
+              <textarea
+                autoFocus={!noteModal.activity.requiresPhoto}
+                value={noteInput}
+                onChange={e => setNoteInput(e.target.value)}
+                placeholder={t(lang, 'addDetails') as string}
+                style={{
+                  width: '100%', padding: '12px',
+                  border: '2px solid #E5E7EB', borderRadius: '12px',
+                  fontSize: '16px', fontFamily: 'system-ui',
+                  minHeight: '90px', resize: 'vertical',
+                  boxSizing: 'border-box', marginBottom: '16px'
+                }}
+              />
+            )}
+
+            {/* Photo input */}
+            {noteModal.activity.requiresPhoto && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px',
+                  fontSize: '14px', fontWeight: '700', color: '#374151'
+                }}>
+                  {t(lang, 'photoLabel')}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  id="photo-capture-input"
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const compressed = await compressImage(file)
+                    setPhotoInput(compressed)
+                  }}
+                />
+                {photoInput ? (
+                  <div style={{ position: 'relative' }}>
+                    <img src={photoInput} alt="preview" style={{
+                      width: '100%', borderRadius: '12px', border: '2px solid #E5E7EB',
+                      maxHeight: '200px', objectFit: 'cover'
+                    }} />
+                    <button
+                      type="button"
+                      onClick={() => setPhotoInput(null)}
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: 'rgba(0,0,0,0.6)', color: 'white',
+                        border: 'none', borderRadius: '50%',
+                        width: '28px', height: '28px', cursor: 'pointer',
+                        fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >✕</button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('photo-capture-input')?.click()}
+                    style={{
+                      width: '100%', padding: '16px',
+                      border: '2px dashed #D1D5DB', borderRadius: '12px',
+                      background: '#F9FAFB', cursor: 'pointer',
+                      fontSize: '15px', color: '#6B7280', fontWeight: '600'
+                    }}
+                  >
+                    📷 {t(lang, 'takePhoto')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => { setNoteModal(null); setPhotoInput(null) }}
+                style={{
+                  flex: 1, padding: '12px', background: '#F3F4F6',
+                  border: 'none', borderRadius: '12px', fontSize: '15px',
+                  fontWeight: '700', cursor: 'pointer', color: '#374151'
+                }}
+              >
+                {t(lang, 'cancel')}
+              </button>
+              <button
+                disabled={
+                  (noteModal.activity.requiresNote && !noteInput.trim()) ||
+                  (noteModal.activity.requiresPhoto && !photoInput)
+                }
+                onClick={() => {
+                  const activity = noteModal.activity
+                  const note = noteInput.trim() || undefined
+                  const photo = photoInput || undefined
+                  setNoteModal(null)
+                  setPhotoInput(null)
+                  completeActivity(activity, note, photo)
+                }}
+                style={{
+                  flex: 1, padding: '12px',
+                  background: (
+                    (noteModal.activity.requiresNote && !noteInput.trim()) ||
+                    (noteModal.activity.requiresPhoto && !photoInput)
+                  ) ? '#D1D5DB' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none', borderRadius: '12px', fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: (
+                    (noteModal.activity.requiresNote && !noteInput.trim()) ||
+                    (noteModal.activity.requiresPhoto && !photoInput)
+                  ) ? 'not-allowed' : 'pointer',
+                  color: 'white'
+                }}
+              >
+                {t(lang, 'completeActivity')}
+              </button>
+            </div>
           </div>
         </div>
       )}
