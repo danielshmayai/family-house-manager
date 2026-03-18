@@ -202,6 +202,7 @@ model OtpCode {
   id        String   @id @default(cuid())
   email     String
   code      String
+  type      String   @default("2fa")
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())

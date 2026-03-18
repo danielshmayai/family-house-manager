@@ -133,6 +133,15 @@ export default function Login() {
           >
             {loading ? t(lang, 'signingIn') : t(lang, 'letsGo')}
           </button>
+
+          <div style={{ textAlign: 'center' }}>
+            <a
+              href="/auth/forgot-password"
+              style={{ color: '#6B7280', fontSize: '14px', fontWeight: '600', textDecoration: 'none' }}
+            >
+              {t(lang, 'forgotPassword')}
+            </a>
+          </div>
         </form>
 
         {msg && (
