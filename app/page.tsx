@@ -1,5 +1,5 @@
 "use client"
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import IconDisplay from '@/components/IconDisplay'
@@ -53,15 +53,7 @@ export default function HomePage() {
   const userRole = sessionUser?.role
   const isManager = userRole === 'ADMIN' || userRole === 'MANAGER'
 
-  useEffect(() => {
-    if (status === 'loading') return
-    if (status === 'authenticated') {
-      loadData()
-    }
-    // unauthenticated: nothing to load, loading stays false
-  }, [status, householdId, userId])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
@@ -100,7 +92,15 @@ export default function HomePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [householdId, userId])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    if (status === 'authenticated') {
+      loadData()
+    }
+    // unauthenticated: nothing to load, loading stays false
+  }, [status, loadData])
 
   async function completeActivity(activity: Activity) {
     setCompleting(activity.id)
