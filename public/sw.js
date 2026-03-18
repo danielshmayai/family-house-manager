@@ -1,7 +1,6 @@
 // FinanSee Service Worker
-const CACHE_NAME = 'finansee-v1'
+const CACHE_NAME = 'finansee-v2'
 const STATIC_ASSETS = [
-  '/finance',
   '/manifest.json',
 ]
 
@@ -22,7 +21,7 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
-  // Network-first for API, cache-first for static
+  // Network-first for API calls
   if (event.request.url.includes('/api/')) {
     event.respondWith(
       fetch(event.request).catch(() => new Response('{"error":"offline"}', {
@@ -32,6 +31,15 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // Never cache HTML pages — they reference hashed JS/CSS chunks that change on every deploy
+  if (event.request.headers.get('Accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    )
+    return
+  }
+
+  // Cache-first for static assets (JS, CSS, images, fonts)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached
@@ -41,7 +49,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
         }
         return response
-      }).catch(() => cached || new Response('Offline', { status: 503 }))
+      }).catch(() => new Response('Offline', { status: 503 }))
     })
   )
 })
