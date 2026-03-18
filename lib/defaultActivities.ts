@@ -110,12 +110,77 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
   }
 ]
 
+export const DEFAULT_CATEGORIES_HE: DefaultCategory[] = [
+  {
+    key: 'mishimot-bayit',
+    name: 'משימות בית',
+    description: 'משימות תחזוקה יומיות ושבועיות בבית',
+    icon: '🏠',
+    color: '#3B82F6',
+    position: 0,
+    activities: [
+      { key: 'seder-heder', name: 'סדר את החדר', description: 'אסוף חפצים וסדר את החדר שלך', icon: '🛏️', defaultPoints: 10, frequency: 'DAILY', position: 0 },
+      { key: 'shtiifat-kelim', name: 'שטיפת כלים', description: 'שטוף את כל הכלים והנח אותם במקומם', icon: '🍽️', defaultPoints: 10, frequency: 'DAILY', position: 1 },
+      { key: 'niggub-avak', name: 'ניגוב אבק', description: 'נגב אבק מכל הרהיטים', icon: '🧹', defaultPoints: 10, frequency: 'WEEKLY', position: 2 },
+      { key: 'sheiva-avak', name: 'שאיבת אבק', description: 'שאב אבק בכל החדרים', icon: '🧽', defaultPoints: 15, frequency: 'WEEKLY', position: 3 },
+      { key: 'kvisa', name: 'כביסה', description: 'הכנס כביסה למכונה, ייבש וקפל', icon: '🧺', defaultPoints: 20, frequency: 'WEEKLY', position: 4 },
+      { key: 'hotzoat-ashpa', name: 'הוצאת אשפה', description: 'רוקן את פחי הזבל והוצא לחוץ', icon: '🗑️', defaultPoints: 10, frequency: 'DAILY', position: 5 },
+    ]
+  },
+  {
+    key: 'hayyat-michmad',
+    name: 'חיית מחמד',
+    description: 'טיפול בחיות המחמד של המשפחה',
+    icon: '🐾',
+    color: '#F59E0B',
+    position: 1,
+    activities: [
+      { key: 'haala-hayyat-michmad', name: 'האכלת חיית מחמד', description: 'תן אוכל ומים טריים לחיית המחמד', icon: '🐕', defaultPoints: 10, frequency: 'DAILY', position: 0 },
+      { key: 'halicha-im-kelev', name: 'הליכה עם הכלב', description: 'קח את הכלב לטיול', icon: '🦮', defaultPoints: 20, frequency: 'DAILY', position: 1 },
+      { key: 'nikion-argaz-khol', name: 'ניקיון ארגז חול', description: 'נקה את ארגז החול של החתול', icon: '🐈', defaultPoints: 10, frequency: 'DAILY', position: 2 },
+      { key: 'sirug-parva', name: 'סירוק פרווה', description: 'סרק את פרוות חיית המחמד', icon: '🪮', defaultPoints: 10, frequency: 'WEEKLY', position: 3 },
+    ]
+  },
+  {
+    key: 'sport',
+    name: 'ספורט',
+    description: 'פעילות גופנית ואימונים',
+    icon: '🏃',
+    color: '#8B5CF6',
+    position: 2,
+    activities: [
+      { key: 'imun-sport', name: 'אימון ספורט', description: '30 דקות של פעילות גופנית', icon: '💪', defaultPoints: 25, frequency: 'DAILY', position: 0 },
+      { key: 'ritza', name: 'ריצה', description: 'צא לריצה של לפחות 20 דקות', icon: '🏃', defaultPoints: 20, frequency: 'DAILY', position: 1 },
+      { key: 'rekhiva-ofanayim', name: 'רכיבה על אופניים', description: 'צא לסיבוב על האופניים', icon: '🚴', defaultPoints: 20, frequency: 'WEEKLY', position: 2 },
+      { key: 'skhiya', name: 'שחייה', description: 'שחה לפחות 20 דקות בבריכה', icon: '🏊', defaultPoints: 25, frequency: 'WEEKLY', position: 3 },
+      { key: 'kaduregel', name: 'כדורגל', description: 'שחק כדורגל עם חברים', icon: '⚽', defaultPoints: 20, frequency: 'WEEKLY', position: 4 },
+    ]
+  },
+  {
+    key: 'maasim-tovim',
+    name: 'מעשים טובים',
+    description: 'נקודות בונוס על מעשים טובים ועזרה',
+    icon: '❤️',
+    color: '#EC4899',
+    position: 3,
+    activities: [
+      { key: 'ezra-lakh-akh', name: 'עזרה לאח/אחות', description: 'עזור לאחיך או אחותך במשהו', icon: '🤝', defaultPoints: 15, frequency: 'ANYTIME', position: 0 },
+      { key: 'ezra-lahorim', name: 'עזרה להורים', description: 'עזור להורים ללא בקשה', icon: '🌟', defaultPoints: 20, frequency: 'ANYTIME', position: 1 },
+      { key: 'toda-lamishehu', name: 'הודיה למישהו', description: 'תודה למישהו בכנות', icon: '💌', defaultPoints: 10, frequency: 'ANYTIME', position: 2 },
+      { key: 'ezra-lishakhen', name: 'עזרה לשכן', description: 'עזור לשכן או לחבר', icon: '🏘️', defaultPoints: 15, frequency: 'ANYTIME', position: 3 },
+      { key: 'peula-tova', name: 'פעולה טובה', description: 'עשה מעשה טוב ובלתי צפוי', icon: '✨', defaultPoints: 20, frequency: 'ANYTIME', position: 4 },
+    ]
+  }
+]
+
 /**
  * Seed a household with default categories and activities.
  * Uses unique keys scoped to the household to avoid conflicts.
+ * @param lang - 'he' seeds Hebrew categories, anything else seeds English
  */
-export async function seedHouseholdDefaults(prisma: PrismaClient, householdId: string, createdById: string) {
-  for (const cat of DEFAULT_CATEGORIES) {
+export async function seedHouseholdDefaults(prisma: PrismaClient, householdId: string, createdById: string, lang?: string) {
+  const categories = lang === 'he' ? DEFAULT_CATEGORIES_HE : DEFAULT_CATEGORIES
+  for (const cat of categories) {
     const scopedCatKey = `${householdId}_${cat.key}`
 
     const category = await prisma.category.create({
