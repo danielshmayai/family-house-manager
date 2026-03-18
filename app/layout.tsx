@@ -11,8 +11,13 @@ export const metadata = {
   description: 'Manage household tasks, events and members',
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/icons/icon-192.png',
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   appleWebApp: {
     capable: true,
@@ -41,12 +46,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} dir={dir} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <link rel="manifest" href="/manifest.json" />
+        {/* viewport, manifest, icons, theme-color, appleWebApp are all declared via
+            the metadata/viewport exports above — Next.js injects them automatically.
+            Only non-metadata things live here. */}
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#1a56db" />
         <script dangerouslySetInnerHTML={{
           __html: `
             if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
