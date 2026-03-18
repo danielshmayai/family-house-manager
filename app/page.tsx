@@ -312,7 +312,7 @@ export default function HomePage() {
                 </div>
                 <LanguageToggle />
                 <button
-                  onClick={() => signOut({ callbackUrl: '/auth/login' })}
+                  onClick={async () => { await signOut({ redirect: false }); window.location.href = '/auth/login' }}
                   style={{
                     padding: '10px 14px',
                     background: 'rgba(255,255,255,0.2)',

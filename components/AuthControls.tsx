@@ -15,7 +15,7 @@ export default function AuthControls() {
           {roleBadge} {user.name || user.email}
         </span>
         <button
-          onClick={() => signOut({ callbackUrl: '/auth/login' })}
+          onClick={async () => { await signOut({ redirect: false }); window.location.href = '/auth/login' }}
           style={{
             padding: '6px 14px', background: 'rgba(255,255,255,0.25)',
             border: '1px solid rgba(255,255,255,0.4)', borderRadius: '8px',
