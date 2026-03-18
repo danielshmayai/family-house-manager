@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const householdId = sessionUser.householdId
+    const { lang } = req.body as { lang?: string }
 
     // Delete all existing events, activities, and categories for this household
     // Events first (depends on activities), then activities (depends on categories), then categories
@@ -33,8 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     await prisma.category.deleteMany({ where: { householdId } })
 
-    // Re-seed with defaults
-    await seedHouseholdDefaults(prisma, householdId, sessionUser.id)
+    // Re-seed with defaults in the correct language
+    await seedHouseholdDefaults(prisma, householdId, sessionUser.id, lang)
 
     return res.json({
       success: true,
