@@ -7,7 +7,7 @@ import LanguageToggle from '@/components/LanguageToggle'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
-  const prefillEmail = searchParams.get('email') || ''
+  const prefillEmail = searchParams?.get('email') || ''
 
   const [email, setEmail] = useState(prefillEmail)
   const [code, setCode] = useState('')
