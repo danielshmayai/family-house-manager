@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   try { session = await getServerSession(authOptions) } catch (e) { /* ignore */ }
 
   return (
-    <html lang="he" dir="rtl">
+    <html lang="he" dir="rtl" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <link rel="manifest" href="/manifest.json" />
@@ -50,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           `
         }} />
       </head>
-      <body style={{ margin: 0, padding: 0, overflowX: 'hidden' }}>
+      <body style={{ margin: 0, padding: 0, overflowX: 'hidden' }} suppressHydrationWarning>
         <Providers session={session}>
           <main style={{ minHeight: '100vh', padding: 0 }}>{children}</main>
         </Providers>
