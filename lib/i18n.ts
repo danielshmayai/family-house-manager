@@ -247,6 +247,11 @@ const t_map = {
     resetSuccess: '✅ Activities have been reset to defaults!',
     nameRequired2: 'Name is required',
     nameAndCatRequired: 'Name and category are required',
+
+    // ── History ──────────────────────────────────────────────
+    navHistory: 'History',
+    historyTitle: '📜 Activity History',
+    historySubtitle: 'What happened, when, and by whom',
   },
 
   he: {
@@ -495,6 +500,11 @@ const t_map = {
     resetSuccess: '✅ הפעילויות אופסו לברירת המחדל!',
     nameRequired2: 'שם הוא שדה חובה',
     nameAndCatRequired: 'שם וקטגוריה הם שדות חובה',
+
+    // ── History ──────────────────────────────────────────────
+    navHistory: 'היסטוריה',
+    historyTitle: '📜 היסטוריית פעילויות',
+    historySubtitle: 'מה קרה, מתי ועל ידי מי',
   },
 }
 

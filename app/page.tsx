@@ -702,6 +702,7 @@ export default function HomePage() {
           <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
             {[
               { path: '/', icon: '🏠', labelKey: 'navHome' as const },
+              { path: '/history', icon: '📜', labelKey: 'navHistory' as const },
               { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
               { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
               ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : []),
