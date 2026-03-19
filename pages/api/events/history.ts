@@ -1,0 +1,140 @@
+import { NextApiRequest, NextApiResponse } from 'next'
+import prisma from '../../../lib/prisma'
+import { getSessionUser, verifyHouseholdAccess } from '../../../lib/apiAuth'
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') return res.status(405).end()
+
+  try {
+    const sessionUser = await getSessionUser(req, res)
+    if (!sessionUser?.householdId) return res.status(401).json({ error: 'Unauthorized' })
+
+    const householdId = sessionUser.householdId
+    const hasAccess = await verifyHouseholdAccess(sessionUser.id, householdId)
+    if (!hasAccess) return res.status(403).json({ error: 'No access' })
+
+    const { startDate, endDate, userId, activityId, categoryId, limit: lim, offset: off } = req.query
+
+    const where: any = { householdId }
+
+    if (startDate) where.occurredAt = { ...where.occurredAt, gte: new Date(String(startDate)) }
+    if (endDate) where.occurredAt = { ...where.occurredAt, lte: new Date(String(endDate)) }
+    if (userId) where.recordedById = String(userId)
+    if (activityId) where.activityId = String(activityId)
+    if (categoryId) where.activity = { categoryId: String(categoryId) }
+
+    const take = Math.min(Number(lim) || 200, 500)
+    const skip = Number(off) || 0
+
+    const [events, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: { occurredAt: 'desc' },
+        take,
+        skip,
+        include: {
+          activity: {
+            select: { id: true, name: true, icon: true, defaultPoints: true, categoryId: true,
+              category: { select: { id: true, name: true, icon: true, color: true } }
+            }
+          },
+          recordedBy: { select: { id: true, name: true, email: true } },
+        }
+      }),
+      prisma.event.count({ where }),
+    ])
+
+    // Activity frequency stats (top activities by count in the filtered range)
+    const statsWhere: any = { householdId }
+    if (startDate) statsWhere.occurredAt = { ...statsWhere.occurredAt, gte: new Date(String(startDate)) }
+    if (endDate) statsWhere.occurredAt = { ...statsWhere.occurredAt, lte: new Date(String(endDate)) }
+    if (userId) statsWhere.recordedById = String(userId)
+    if (categoryId) statsWhere.activity = { categoryId: String(categoryId) }
+
+    const activityStats = await prisma.event.groupBy({
+      by: ['activityId'],
+      where: { ...statsWhere, activityId: { not: null } },
+      _count: { id: true },
+      _sum: { points: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 20,
+    })
+
+    // Resolve activity names for stats
+    const activityIds = activityStats.map((s: any) => s.activityId).filter(Boolean) as string[]
+    const activities = activityIds.length > 0
+      ? await prisma.activity.findMany({
+          where: { id: { in: activityIds } },
+          select: { id: true, name: true, icon: true, categoryId: true,
+            category: { select: { name: true, icon: true, color: true } }
+          }
+        })
+      : []
+    const actMap = Object.fromEntries(activities.map((a: any) => [a.id, a]))
+
+    const topActivities = activityStats.map((s: any) => ({
+      activityId: s.activityId,
+      count: s._count.id,
+      totalPoints: s._sum.points || 0,
+      activity: s.activityId ? actMap[s.activityId] || null : null,
+    }))
+
+    // Per-user stats
+    const userStats = await prisma.event.groupBy({
+      by: ['recordedById'],
+      where: statsWhere,
+      _count: { id: true },
+      _sum: { points: true },
+      orderBy: { _sum: { points: 'desc' } },
+    })
+
+    const userIds = userStats.map((s: any) => s.recordedById)
+    const users = userIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true }
+        })
+      : []
+    const userMap = Object.fromEntries(users.map((u: any) => [u.id, u]))
+
+    const perUser = userStats.map((s: any) => ({
+      userId: s.recordedById,
+      count: s._count.id,
+      totalPoints: s._sum.points || 0,
+      user: userMap[s.recordedById] || null,
+    }))
+
+    // Household members (for filter dropdowns)
+    const members = await prisma.user.findMany({
+      where: { householdId },
+      select: { id: true, name: true, email: true }
+    })
+
+    // Categories (for filter dropdowns)
+    const categories = await prisma.category.findMany({
+      where: { householdId },
+      select: { id: true, name: true, icon: true, color: true },
+      orderBy: { position: 'asc' }
+    })
+
+    // Activities for the given category (for filter dropdown)
+    const allActivities = await prisma.activity.findMany({
+      where: { category: { householdId } },
+      select: { id: true, name: true, icon: true, categoryId: true },
+      orderBy: { position: 'asc' }
+    })
+
+    return res.json({
+      events,
+      total,
+      topActivities,
+      perUser,
+      members,
+      categories,
+      activities: allActivities,
+    })
+  } catch (e) {
+    console.error(e)
+    return res.status(500).json({ error: 'Server error' })
+  }
+}
