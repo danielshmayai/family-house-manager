@@ -24,14 +24,8 @@ model User {
   // 2FA
   otpSecret       String?
   otpEnabled      Boolean             @default(false)
-  // Finance
   language        String              @default("he")
   theme           String              @default("light")
-  // Finance relations
-  financialAssets FinancialAsset[]
-  financialGoals  FinancialGoal[]
-  notifications   Notification[]
-  assetSnapshots  AssetSnapshot[]
   // My Tasks
   tasksAssigned   UserTask[]          @relation("TasksAssignedBy")
   tasksReceived   UserTask[]          @relation("TasksAssignedTo")
@@ -154,78 +148,6 @@ model BugReport {
   createdAt   DateTime  @default(now())
   resolved    Boolean   @default(false)
   resolvedAt  DateTime?
-}
-
-// ────────────────────────────────────────────────
-// FINANCAL APP MODELS
-// ────────────────────────────────────────────────
-
-model FinancialAsset {
-  id            String          @id @default(cuid())
-  userId        String
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String
-  name          String
-  institution   String
-  accountNumber String?
-  currency      String          @default("ILS")
-  currentValue  Float           @default(0)
-  ticker        String?
-  quantity      Float?
-  purchasePrice Float?
-  purchaseDate  DateTime?
-  interestRate  Float?
-  maturityDate  DateTime?
-  monthlyDeposit Float?
-  employerContribution Float?
-  expectedReturnRate Float?
-  bankCode      String?
-  branchCode    String?
-  notes         String?
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  snapshots     AssetSnapshot[]
-}
-
-model AssetSnapshot {
-  id        String         @id @default(cuid())
-  assetId   String
-  asset     FinancialAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  value     Float
-  date      DateTime
-  createdAt DateTime       @default(now())
-}
-
-model FinancialGoal {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  targetAmount Float
-  currentAmount Float   @default(0)
-  targetDate  DateTime?
-  category    String?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String
-  title     String
-  titleHe   String?
-  message   String
-  messageHe String?
-  isRead    Boolean  @default(false)
-  metadata  String?
-  createdAt DateTime @default(now())
 }
 
 model OtpCode {
