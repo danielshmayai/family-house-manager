@@ -103,9 +103,9 @@ export default function HomePage() {
         setSelectedCategory(prev => {
           if (prev) {
             const refreshed = cats.find((c: Category) => c.id === prev.id)
-            return refreshed || cats[0]
+            return refreshed || prev
           }
-          return cats[0]
+          return null  // stay on overview; user picks a category
         })
       }
 
@@ -468,35 +468,59 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ─── Authenticated: Stats Bar ─── */}
-      {status === 'authenticated' && householdId && (
-        <div style={{
-          maxWidth: '800px',
-          margin: 'clamp(-20px, -4vw, -24px) auto clamp(16px, 4vw, 24px)',
-          padding: '0 clamp(12px, 3vw, 20px)'
-        }}>
+      {/* ─── Authenticated: Stats Hero Card ─── */}
+      {status === 'authenticated' && householdId && (() => {
+        const allActivities = categories.flatMap(c => c.activities?.filter(a => a.isActive) || [])
+        const totalAvailable = allActivities.length
+        const progressPct = totalAvailable > 0 ? Math.round((completedToday / totalAvailable) * 100) : 0
+        return (
           <div style={{
-            background: 'white', borderRadius: '18px',
-            padding: 'clamp(16px, 4vw, 20px)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 'clamp(8px, 2vw, 16px)'
+            maxWidth: '800px',
+            margin: 'clamp(-20px, -4vw, -24px) auto clamp(16px, 4vw, 24px)',
+            padding: '0 clamp(12px, 3vw, 20px)'
           }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#667eea' }}>{completedToday}</div>
-              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'doneToday')}</div>
-            </div>
-            <div style={{ textAlign: 'center', borderLeft: '1px solid #F3F4F6', borderRight: '1px solid #F3F4F6' }}>
-              <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#10B981' }}>{todayActivities.length}</div>
-              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'available')}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#F59E0B' }}>{categories.length}</div>
-              <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'categories')}</div>
+            <div style={{
+              background: 'white', borderRadius: '20px',
+              padding: 'clamp(16px, 4vw, 20px)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            }}>
+              {/* Top row: progress label + categories pill */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#1F2937', lineHeight: 1 }}>
+                    {completedToday}
+                    <span style={{ fontSize: 'clamp(13px, 3vw, 15px)', color: '#9CA3AF', fontWeight: '600' }}>
+                      {' '}/ {totalAvailable} {t(lang, 'doneToday')}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 'clamp(11px, 2.5vw, 13px)', color: '#6B7280', marginTop: '4px' }}>
+                    {progressPct === 100 ? '🏆 ' + t(lang, 'allDoneHere') : t(lang, 'earnPointsToday')}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <div style={{ background: '#F3F4F6', borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '700', color: '#6B7280' }}>
+                    {categories.length} {t(lang, 'categories')}
+                  </div>
+                  <div style={{ fontWeight: '800', color: '#667eea', fontSize: 'clamp(16px, 4vw, 18px)' }}>
+                    {totalPointsToday} ⭐
+                  </div>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div style={{ background: '#F3F4F6', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: '99px',
+                  background: progressPct === 100
+                    ? 'linear-gradient(90deg, #10B981, #059669)'
+                    : 'linear-gradient(90deg, #667eea, #764ba2)',
+                  width: `${progressPct}%`,
+                  transition: 'width 0.5s ease'
+                }} />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ─── Record-on-behalf selector (managers only) ─── */}
       {status === 'authenticated' && householdId && isManager && householdMembers.length > 1 && (
@@ -565,40 +589,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ─── Category Tabs ─── */}
-      {status === 'authenticated' && householdId && categories.length > 0 && (
-        <div style={{
-          maxWidth: '800px', margin: '0 auto clamp(16px, 4vw, 20px)',
-          padding: '0 clamp(12px, 3vw, 20px)',
-          overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none', msOverflowStyle: 'none'
-        }}>
-          <div style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', paddingBottom: '8px', minWidth: 'min-content' }}>
-            {categories.map(cat => (
-              <button key={cat.id} onClick={() => setSelectedCategory(cat)}
-                style={{
-                  padding: 'clamp(10px, 2.5vw, 12px) clamp(16px, 4vw, 20px)',
-                  minHeight: '44px',
-                  background: selectedCategory?.id === cat.id ? (cat.color || '#667eea') : 'white',
-                  color: selectedCategory?.id === cat.id ? 'white' : '#374151',
-                  border: selectedCategory?.id === cat.id ? 'none' : '2px solid #E5E7EB',
-                  borderRadius: '14px',
-                  fontSize: 'clamp(13px, 3.5vw, 15px)', fontWeight: '700',
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  boxShadow: selectedCategory?.id === cat.id ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-                  transition: 'all 0.2s', flexShrink: 0,
-                  WebkitTapHighlightColor: 'transparent'
-                }}>
-                <IconDisplay icon={cat.icon} fallback="📌" size={20} />
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── Activities Grid ─── */}
+      {/* ─── Main Content: Category Overview OR Task List ─── */}
       {status === 'authenticated' && householdId && (
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 clamp(12px, 3vw, 20px)' }}>
           {loading ? (
@@ -607,6 +598,7 @@ export default function HomePage() {
               <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)' }}>{t(lang, 'loadingActivities')}</div>
             </div>
           ) : categories.length === 0 ? (
+            /* ── No categories ── */
             <div style={{ background: 'white', borderRadius: '20px', padding: 'clamp(40px, 10vw, 60px) clamp(16px, 4vw, 20px)', textAlign: 'center', border: '2px dashed #E5E7EB' }}>
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>📋</div>
               <h3 style={{ margin: '0 0 8px', fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700' }}>{t(lang, 'noActivitiesYet')}</h3>
@@ -620,195 +612,259 @@ export default function HomePage() {
                 </button>
               )}
             </div>
-          ) : todayActivities.length === 0 ? (
-            <div style={{ background: 'white', borderRadius: '20px', padding: 'clamp(40px, 10vw, 60px) clamp(16px, 4vw, 20px)', textAlign: 'center', border: '2px dashed #E5E7EB' }}>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>✅</div>
-              <h3 style={{ margin: '0 0 8px', fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: '700' }}>{t(lang, 'allDoneHere')}</h3>
-              <p style={{ margin: 0, color: '#6B7280' }}>{t(lang, 'noActiveActivities')}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(260px, 100%), 1fr))', gap: 'clamp(12px, 3vw, 16px)' }}>
-              {todayActivities.map(activity => {
-                const isCompleted = isActivityCompletedToday(activity.id)
-                const isProcessing = completing === activity.id
-                const completionEvent = events.find(e => e.activityId === activity.id)
-                const isRevertingThis = completionEvent ? reverting === completionEvent.id : false
-
-                const parsedMeta = completionEvent?.metadata ? (() => { try { return JSON.parse(completionEvent.metadata!) } catch { return null } })() : null
-                const hasViewableContent = isCompleted && completionEvent && (parsedMeta?.note || parsedMeta?.photo)
-
-                return (
-                  <div key={activity.id}
-                    style={{
-                      background: isCompleted ? 'linear-gradient(135deg, #ECFDF5, #D1FAE5)' : 'white',
-                      border: isCompleted ? '2px solid #10B981' : '2px solid #E5E7EB',
-                      borderRadius: '18px',
-                      padding: 'clamp(16px, 4vw, 24px)',
-                      cursor: (isCompleted && !hasViewableContent) ? 'default' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: isProcessing || isRevertingThis ? 0.6 : 1,
-                      position: 'relative', overflow: 'hidden',
-                      minHeight: '44px',
-                      WebkitTapHighlightColor: 'transparent',
-                      boxShadow: isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.06)'
-                    }}
-                    onClick={() => {
-                      if (isProcessing) return
-                      if (hasViewableContent) {
-                        setViewModal({ activity, note: parsedMeta?.note, photo: parsedMeta?.photo })
-                      } else if (!isCompleted) {
-                        handleActivityTap(activity)
-                      }
-                    }}
-                    onMouseEnter={e => {
-                      if (isProcessing) return
-                      if (!isCompleted || hasViewableContent) {
-                        e.currentTarget.style.transform = 'translateY(-4px)'
-                        e.currentTarget.style.boxShadow = hasViewableContent
-                          ? '0 8px 20px rgba(16,185,129,0.25)'
-                          : '0 8px 20px rgba(102,126,234,0.2)'
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = isCompleted ? 'none' : '0 2px 8px rgba(0,0,0,0.06)'
-                    }}
-                  >
-                    {isCompleted && completionEvent && (
-                      <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <div style={{ background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
-                          {t(lang, 'doneBadge')}
+          ) : !selectedCategory ? (
+            /* ══ CATEGORY OVERVIEW GRID ══ */
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'clamp(10px, 2.5vw, 14px)' }}>
+                {categories.map(cat => {
+                  const acts = cat.activities?.filter(a => a.isActive) || []
+                  const done = acts.filter(a => events.some(e => e.activityId === a.id)).length
+                  const total = acts.length
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0
+                  const allDone = total > 0 && done === total
+                  const catColor = cat.color || '#667eea'
+                  return (
+                    <button key={cat.id} onClick={() => setSelectedCategory(cat)}
+                      style={{
+                        background: allDone ? 'linear-gradient(135deg, #ECFDF5, #D1FAE5)' : 'white',
+                        border: allDone ? '2px solid #10B981' : '2px solid #E5E7EB',
+                        borderRadius: '18px',
+                        padding: 'clamp(14px, 3.5vw, 18px)',
+                        cursor: 'pointer', textAlign: lang === 'he' ? 'right' : 'left',
+                        transition: 'all 0.15s',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        WebkitTapHighlightColor: 'transparent',
+                        display: 'flex', flexDirection: 'column', gap: '10px'
+                      }}>
+                      {/* Icon circle */}
+                      <div style={{
+                        width: '48px', height: '48px', borderRadius: '50%',
+                        background: allDone ? '#D1FAE5' : catColor + '20',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '24px', flexShrink: 0
+                      }}>
+                        <IconDisplay icon={cat.icon} fallback="📌" size={26} />
+                      </div>
+                      {/* Name */}
+                      <div style={{ fontWeight: '700', fontSize: 'clamp(13px, 3.5vw, 15px)', color: allDone ? '#065F46' : '#1F2937', lineHeight: 1.2 }}>
+                        {cat.name}
+                      </div>
+                      {/* Progress */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                          <span style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: '600' }}>
+                            {done}/{total}
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: allDone ? '#10B981' : catColor }}>
+                            {pct}%
+                          </span>
                         </div>
+                        <div style={{ background: '#F3F4F6', borderRadius: '99px', height: '5px', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: '99px',
+                            background: allDone ? '#10B981' : catColor,
+                            width: `${pct}%`, transition: 'width 0.4s ease'
+                          }} />
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Today's Wins Timeline (shown on overview) */}
+              {events.length > 0 && (
+                <div style={{ marginTop: 'clamp(20px, 5vw, 28px)', background: 'white', borderRadius: '18px', padding: 'clamp(14px, 3.5vw, 20px)', border: '2px solid #E5E7EB', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <h3 style={{ margin: '0 0 clamp(10px, 2.5vw, 14px)', fontSize: 'clamp(15px, 4vw, 17px)', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {t(lang, 'todaysWins')}
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {events.slice(0, 6).map(event => (
+                      <div key={event.id} style={{ display: 'flex', gap: '10px', padding: '10px 12px', background: '#F9FAFB', borderRadius: '10px', alignItems: 'center' }}>
+                        <IconDisplay icon={event.activity?.icon} fallback="⭐" size={18} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: '700', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.activity?.name || t(lang, 'activityCompleted')}</div>
+                          <div style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                            {new Date(event.occurredAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: '800', color: '#10B981', fontSize: '14px', flexShrink: 0 }}>+{event.points} ⭐</div>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            revertEvent(completionEvent.id, activity.name, completionEvent.points)
-                          }}
-                          disabled={isRevertingThis}
+                          onClick={() => revertEvent(event.id, event.activity?.name || t(lang, 'activityCompleted'), event.points)}
+                          disabled={reverting === event.id}
                           style={{
-                            background: '#FEF3C7', color: '#92400E', padding: '4px 10px',
-                            borderRadius: '20px', fontSize: '11px', fontWeight: '800',
-                            border: '1px solid #FCD34D', cursor: 'pointer',
-                            opacity: isRevertingThis ? 0.5 : 1,
+                            padding: '5px 10px', background: reverting === event.id ? '#E5E7EB' : '#FEF3C7',
+                            border: '1px solid #FCD34D', borderRadius: '8px',
+                            fontSize: '11px', fontWeight: '700', cursor: 'pointer', color: '#92400E',
+                            flexShrink: 0, opacity: reverting === event.id ? 0.5 : 1,
                             WebkitTapHighlightColor: 'transparent'
                           }}
                         >
-                          {isRevertingThis ? '⏳' : t(lang, 'undoBtn')}
+                          {reverting === event.id ? '⏳' : t(lang, 'undoBtn')}
                         </button>
                       </div>
-                    )}
-                    {isCompleted && !completionEvent && (
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#10B981', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
-                        {t(lang, 'doneBadge')}
-                      </div>
-                    )}
-                    {isProcessing && (
-                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#667eea', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '800' }}>
-                        ⏳
-                      </div>
-                    )}
-
-                    <IconDisplay icon={activity.icon} fallback="✓" size={44} style={{ marginBottom: '10px' }} />
-                    <h3 style={{ margin: '0 0 6px', fontSize: 'clamp(15px, 4vw, 17px)', fontWeight: '700', color: isCompleted ? '#065F46' : '#1F2937' }}>
-                      {activity.name}
-                    </h3>
-                    {activity.description && (
-                      <p style={{ margin: '0 0 12px', fontSize: 'clamp(12px, 3vw, 13px)', color: '#6B7280', lineHeight: '1.4' }}>
-                        {activity.description}
-                      </p>
-                    )}
-
-                    {/* Requirement badges */}
-                    {(!isCompleted && (activity.requiresNote || activity.requiresPhoto)) && (
-                      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                        {activity.requiresNote && (
-                          <span title={t(lang, 'requiresNoteIndicator') as string} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '3px',
-                            background: '#EFF6FF', color: '#1D4ED8',
-                            padding: '2px 8px', borderRadius: '12px',
-                            fontSize: '11px', fontWeight: '700'
-                          }}>
-                            📝 {t(lang, 'requiresNoteIndicator')}
-                          </span>
-                        )}
-                        {activity.requiresPhoto && (
-                          <span title={t(lang, 'requiresPhotoIndicator') as string} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '3px',
-                            background: '#FFF7ED', color: '#C2410C',
-                            padding: '2px 8px', borderRadius: '12px',
-                            fontSize: '11px', fontWeight: '700'
-                          }}>
-                            📷 {t(lang, 'requiresPhotoIndicator')}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #E5E7EB', gap: '8px' }}>
-                      <div style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', color: '#9CA3AF', fontWeight: '600' }}>{activity.frequency}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {hasViewableContent && (
-                          <span style={{
-                            fontSize: '11px', color: '#059669', fontWeight: '700',
-                            background: '#D1FAE5', padding: '2px 8px', borderRadius: '12px'
-                          }}>
-                            {parsedMeta?.photo ? '📷' : ''}{parsedMeta?.note ? ' 📝' : ''} {t(lang, 'viewDetails')}
-                          </span>
-                        )}
-                        <div style={{ fontSize: 'clamp(18px, 4.5vw, 20px)', fontWeight: '800', color: isCompleted ? '#10B981' : '#667eea' }}>
-                          +{activity.defaultPoints} ⭐
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Today's Wins Timeline */}
-          {events.length > 0 && (
-            <div style={{ marginTop: 'clamp(24px, 6vw, 36px)', background: 'white', borderRadius: '18px', padding: 'clamp(16px, 4vw, 24px)', border: '2px solid #E5E7EB', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <h3 style={{ margin: '0 0 clamp(12px, 3vw, 16px)', fontSize: 'clamp(16px, 4vw, 18px)', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {t(lang, 'todaysWins')}
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 2vw, 10px)' }}>
-                {events.slice(0, 10).map(event => (
-                  <div key={event.id} style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', padding: 'clamp(10px, 2.5vw, 12px)', background: '#F9FAFB', borderRadius: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <IconDisplay icon={event.activity?.icon} fallback="⭐" size={18} />
-                    <div style={{ flex: 1, minWidth: '120px' }}>
-                      <div style={{ fontWeight: '700', fontSize: 'clamp(13px, 3.5vw, 14px)' }}>{event.activity?.name || t(lang, 'activityCompleted')}</div>
-                      <div style={{ fontSize: 'clamp(10px, 2.5vw, 11px)', color: '#9CA3AF' }}>
-                        {new Date(event.occurredAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: '800', color: '#10B981', fontSize: 'clamp(14px, 3.5vw, 16px)', flexShrink: 0 }}>
-                      +{event.points} ⭐
-                    </div>
-                    <button
-                      onClick={() => revertEvent(event.id, event.activity?.name || t(lang, 'activityCompleted'), event.points)}
-                      disabled={reverting === event.id}
-                      style={{
-                        padding: '6px 12px',
-                        minHeight: '32px',
-                        background: reverting === event.id ? '#E5E7EB' : '#FEF3C7',
-                        border: '1px solid #FCD34D',
-                        borderRadius: '8px',
-                        fontSize: 'clamp(11px, 2.5vw, 12px)',
-                        fontWeight: '700',
-                        cursor: reverting === event.id ? 'not-allowed' : 'pointer',
-                        color: '#92400E',
-                        flexShrink: 0,
-                        opacity: reverting === event.id ? 0.5 : 1,
-                        WebkitTapHighlightColor: 'transparent'
-                      }}
-                    >
-                      {reverting === event.id ? '⏳' : t(lang, 'undoBtn')}
-                    </button>
+                </div>
+              )}
+            </>
+          ) : (
+            /* ══ COMPACT TASK LIST VIEW ══ */
+            <>
+              {/* Category header + back */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  style={{
+                    background: 'white', border: '2px solid #E5E7EB',
+                    borderRadius: '12px', padding: '8px 14px',
+                    fontSize: '14px', fontWeight: '700', cursor: 'pointer',
+                    color: '#374151', flexShrink: 0,
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  ← {t(lang, 'back')}
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+                    background: (selectedCategory.color || '#667eea') + '20',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px'
+                  }}>
+                    <IconDisplay icon={selectedCategory.icon} fallback="📌" size={20} />
                   </div>
+                  <h2 style={{ margin: 0, fontSize: 'clamp(16px, 4vw, 19px)', fontWeight: '800', color: '#1F2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedCategory.name}
+                  </h2>
+                </div>
+              </div>
+
+              {/* Category tabs (horizontal scroll, compact) */}
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '14px', paddingBottom: '4px', scrollbarWidth: 'none' }}>
+                {categories.map(cat => (
+                  <button key={cat.id} onClick={() => setSelectedCategory(cat)}
+                    style={{
+                      padding: '6px 14px', minHeight: '32px', flexShrink: 0,
+                      background: selectedCategory.id === cat.id ? (cat.color || '#667eea') : '#F3F4F6',
+                      color: selectedCategory.id === cat.id ? 'white' : '#374151',
+                      border: 'none', borderRadius: '20px',
+                      fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}>
+                    {cat.name}
+                  </button>
                 ))}
               </div>
-            </div>
+
+              {/* Task rows */}
+              {todayActivities.length === 0 ? (
+                <div style={{ background: 'white', borderRadius: '16px', padding: '40px 20px', textAlign: 'center', border: '2px dashed #E5E7EB' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: '700' }}>{t(lang, 'allDoneHere')}</h3>
+                  <p style={{ margin: 0, color: '#6B7280', fontSize: '14px' }}>{t(lang, 'noActiveActivities')}</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {todayActivities.map(activity => {
+                    const isCompleted = isActivityCompletedToday(activity.id)
+                    const isProcessing = completing === activity.id
+                    const completionEvent = events.find(e => e.activityId === activity.id)
+                    const isRevertingThis = completionEvent ? reverting === completionEvent.id : false
+                    const parsedMeta = completionEvent?.metadata ? (() => { try { return JSON.parse(completionEvent.metadata!) } catch { return null } })() : null
+                    const hasViewableContent = isCompleted && completionEvent && (parsedMeta?.note || parsedMeta?.photo)
+                    const catColor = selectedCategory.color || '#667eea'
+
+                    return (
+                      <div key={activity.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          background: isCompleted ? '#F0FDF4' : 'white',
+                          border: `1px solid ${isCompleted ? '#BBF7D0' : '#E5E7EB'}`,
+                          borderRadius: '14px', padding: '12px 14px',
+                          cursor: (!isCompleted || hasViewableContent) ? 'pointer' : 'default',
+                          opacity: isProcessing || isRevertingThis ? 0.6 : 1,
+                          transition: 'background 0.15s',
+                          WebkitTapHighlightColor: 'transparent',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+                        }}
+                        onClick={() => {
+                          if (isProcessing) return
+                          if (hasViewableContent) setViewModal({ activity, note: parsedMeta?.note, photo: parsedMeta?.photo })
+                          else if (!isCompleted) handleActivityTap(activity)
+                        }}
+                      >
+                        {/* Icon */}
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+                          background: isCompleted ? '#D1FAE5' : catColor + '18',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px'
+                        }}>
+                          <IconDisplay icon={activity.icon} fallback="✓" size={24} />
+                        </div>
+
+                        {/* Name + meta */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: '700', fontSize: 'clamp(14px, 3.5vw, 15px)', color: isCompleted ? '#065F46' : '#1F2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {activity.name}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px', flexWrap: 'wrap' }}>
+                            {!isCompleted && activity.requiresNote && (
+                              <span style={{ fontSize: '10px', background: '#EFF6FF', color: '#1D4ED8', padding: '1px 6px', borderRadius: '8px', fontWeight: '700' }}>📝</span>
+                            )}
+                            {!isCompleted && activity.requiresPhoto && (
+                              <span style={{ fontSize: '10px', background: '#FFF7ED', color: '#C2410C', padding: '1px 6px', borderRadius: '8px', fontWeight: '700' }}>📷</span>
+                            )}
+                            {hasViewableContent && (
+                              <span style={{ fontSize: '10px', background: '#D1FAE5', color: '#059669', padding: '1px 6px', borderRadius: '8px', fontWeight: '700' }}>
+                                {parsedMeta?.photo ? '📷' : ''}{parsedMeta?.note ? ' 📝' : ''} {t(lang, 'viewDetails')}
+                              </span>
+                            )}
+                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{activity.frequency}</span>
+                          </div>
+                        </div>
+
+                        {/* Points + action */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <span style={{ fontWeight: '800', color: isCompleted ? '#10B981' : catColor, fontSize: 'clamp(13px, 3.5vw, 15px)', whiteSpace: 'nowrap' }}>
+                            +{activity.defaultPoints}⭐
+                          </span>
+                          {isProcessing ? (
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>⏳</div>
+                          ) : isCompleted ? (
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', color: 'white', fontWeight: '800' }}>✓</div>
+                              {completionEvent && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); revertEvent(completionEvent.id, activity.name, completionEvent.points) }}
+                                  disabled={isRevertingThis}
+                                  style={{
+                                    width: '32px', height: '32px', borderRadius: '50%',
+                                    background: '#FEF3C7', border: '1px solid #FCD34D',
+                                    cursor: 'pointer', fontSize: '14px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    opacity: isRevertingThis ? 0.5 : 1,
+                                    WebkitTapHighlightColor: 'transparent'
+                                  }}
+                                >
+                                  {isRevertingThis ? '⏳' : '↩'}
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{
+                              width: '32px', height: '32px', borderRadius: '50%',
+                              border: `2px solid ${catColor}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '18px', color: catColor, fontWeight: '800'
+                            }}>+</div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
