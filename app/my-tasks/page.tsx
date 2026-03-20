@@ -74,6 +74,7 @@ export default function MyTasksPage() {
   const [newDesc, setNewDesc] = useState('')
   const [assignTo, setAssignTo] = useState<string>('')
   const [selectedActivityId, setSelectedActivityId] = useState<string>('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [saving, setSaving] = useState(false)
 
   // Bonus animation
@@ -186,11 +187,15 @@ export default function MyTasksPage() {
     finally { setSaving(false) }
   }
 
+  // Unique categories derived from activities list
+  const uniqueCategories = Array.from(new Set(activities.map(a => a.category.name)))
+
   function openModal() {
     setNewTitle('')
     setNewDesc('')
     setAssignTo(viewedUserId || '')
     setSelectedActivityId('')
+    setSelectedCategory('')
     setShowModal(true)
   }
 
@@ -437,139 +442,216 @@ export default function MyTasksPage() {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          zIndex: 1000, padding: '0'
+          zIndex: 1000
         }} onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
           <div style={{
             background: 'white', borderRadius: '24px 24px 0 0',
-            padding: '24px 20px 40px', width: '100%', maxWidth: '600px',
-            boxShadow: '0 -8px 40px rgba(0,0,0,0.2)'
+            width: '100%', maxWidth: '600px',
+            boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+            display: 'flex', flexDirection: 'column',
+            maxHeight: '92vh', overflow: 'hidden'
           }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '20px', fontWeight: '900', color: '#1F2937' }}>
+
+            {/* Handle + title */}
+            <div style={{ padding: '16px 20px 0', flexShrink: 0, textAlign: 'center' }}>
+              <div style={{ width: '40px', height: '4px', background: '#E5E7EB', borderRadius: '999px', margin: '0 auto 14px' }} />
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#1F2937', marginBottom: '16px' }}>
                 {t(lang, 'newTaskTitle')}
               </div>
             </div>
-            <form onSubmit={handleAddTask}>
-              {/* Activity picker — only for managers */}
-              {userIsManager && activities.length > 0 && (
+
+            {/* Scrollable body */}
+            <div style={{ overflowY: 'auto', padding: '0 20px', flex: 1 }}>
+              <form onSubmit={handleAddTask} id="add-task-form">
+
+                {/* ── Category + Activity picker (managers only) ── */}
+                {userIsManager && activities.length > 0 && (
+                  <div style={{ marginBottom: '18px' }}>
+
+                    {/* Section label */}
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#6B7280', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {t(lang, 'taskFromActivityLabel')}
+                    </div>
+
+                    {/* Category pills — horizontal scroll */}
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', WebkitOverflowScrolling: 'touch' as any }}>
+                      {/* "No activity" pill */}
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCategory(''); setSelectedActivityId('') }}
+                        style={{
+                          flexShrink: 0, padding: '8px 16px', borderRadius: '20px',
+                          border: `2px solid ${!selectedCategory ? '#667eea' : '#E5E7EB'}`,
+                          background: !selectedCategory ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#F9FAFB',
+                          color: !selectedCategory ? 'white' : '#6B7280',
+                          fontSize: '13px', fontWeight: '700',
+                          cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {t(lang, 'taskActivityNone')}
+                      </button>
+
+                      {/* Category buttons */}
+                      {uniqueCategories.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => { setSelectedCategory(cat); setSelectedActivityId('') }}
+                          style={{
+                            flexShrink: 0, padding: '8px 16px', borderRadius: '20px',
+                            border: `2px solid ${selectedCategory === cat ? '#667eea' : '#E5E7EB'}`,
+                            background: selectedCategory === cat ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#F9FAFB',
+                            color: selectedCategory === cat ? 'white' : '#374151',
+                            fontSize: '13px', fontWeight: '700',
+                            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Activity cards grid */}
+                    {selectedCategory && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))',
+                        gap: '8px',
+                        marginTop: '10px'
+                      }}>
+                        {activities.filter(a => a.category.name === selectedCategory).map(a => {
+                          const isSelected = selectedActivityId === a.id
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() => {
+                                const picking = isSelected ? '' : a.id
+                                setSelectedActivityId(picking)
+                                if (picking && !newTitle.trim()) setNewTitle(a.name)
+                              }}
+                              style={{
+                                padding: '12px 6px',
+                                borderRadius: '14px',
+                                border: `2px solid ${isSelected ? '#667eea' : '#E5E7EB'}`,
+                                background: isSelected ? 'linear-gradient(135deg, #EEF2FF, #F5F3FF)' : 'white',
+                                boxShadow: isSelected ? '0 0 0 3px rgba(102,126,234,0.2)' : 'none',
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                WebkitTapHighlightColor: 'transparent',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <div style={{ fontSize: '26px', lineHeight: 1, marginBottom: '6px' }}>{a.icon || '⚡'}</div>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#4338CA' : '#374151', lineHeight: 1.2 }}>
+                                {a.name}
+                              </div>
+                              <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '3px' }}>+{a.defaultPoints}⭐</div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Title ── */}
                 <div style={{ marginBottom: '14px' }}>
-                  <label
-                    htmlFor="task-activity-select"
-                    style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}
-                  >
-                    {t(lang, 'taskFromActivityLabel')}
+                  <label htmlFor="task-title-input" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                    {t(lang, 'taskTitleLabel')}
                   </label>
-                  <select
-                    id="task-activity-select"
-                    value={selectedActivityId}
-                    onChange={e => {
-                      const id = e.target.value
-                      setSelectedActivityId(id)
-                      if (id && !newTitle.trim()) {
-                        const act = activities.find(a => a.id === id)
-                        if (act) setNewTitle(act.name)
-                      }
-                    }}
+                  <input
+                    id="task-title-input"
+                    autoFocus
+                    value={newTitle}
+                    onChange={e => setNewTitle(e.target.value)}
+                    placeholder="e.g. Clean room, Finish homework…"
+                    required
                     style={{
                       width: '100%', padding: '12px 14px', borderRadius: '12px',
                       border: '2px solid #E5E7EB', fontSize: '15px', outline: 'none',
-                      background: 'white', boxSizing: 'border-box', fontFamily: 'inherit'
+                      boxSizing: 'border-box', fontFamily: 'inherit'
                     }}
-                  >
-                    <option value="">{t(lang, 'taskActivityNone')}</option>
-                    {activities.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.icon ? `${a.icon} ` : ''}{a.name} · {a.category.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
-              )}
 
-              <div style={{ marginBottom: '14px' }}>
-                <label
-                  htmlFor="task-title-input"
-                  style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}
-                >
-                  {t(lang, 'taskTitleLabel')}
-                </label>
-                <input
-                  id="task-title-input"
-                  autoFocus
-                  value={newTitle}
-                  onChange={e => setNewTitle(e.target.value)}
-                  placeholder="e.g. Clean room, Finish homework…"
-                  required
-                  style={{
-                    width: '100%', padding: '12px 14px', borderRadius: '12px',
-                    border: '2px solid #E5E7EB', fontSize: '15px', outline: 'none',
-                    boxSizing: 'border-box', fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '14px' }}>
-                <label htmlFor="task-desc-input" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
-                  {t(lang, 'taskDescriptionLabel')}
-                </label>
-                <textarea
-                  id="task-desc-input"
-                  value={newDesc}
-                  onChange={e => setNewDesc(e.target.value)}
-                  rows={2}
-                  style={{
-                    width: '100%', padding: '12px 14px', borderRadius: '12px',
-                    border: '2px solid #E5E7EB', fontSize: '15px', outline: 'none',
-                    resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-
-              {/* Assign-to picker — only for managers */}
-              {userIsManager && members.length > 1 && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label htmlFor="task-assign-select" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
-                    {t(lang, 'taskAssignToLabel')}
+                {/* ── Description ── */}
+                <div style={{ marginBottom: '14px' }}>
+                  <label htmlFor="task-desc-input" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                    {t(lang, 'taskDescriptionLabel')}
                   </label>
-                  <select
-                    id="task-assign-select"
-                    value={assignTo}
-                    onChange={e => setAssignTo(e.target.value)}
+                  <textarea
+                    id="task-desc-input"
+                    value={newDesc}
+                    onChange={e => setNewDesc(e.target.value)}
+                    rows={2}
                     style={{
                       width: '100%', padding: '12px 14px', borderRadius: '12px',
                       border: '2px solid #E5E7EB', fontSize: '15px', outline: 'none',
-                      background: 'white', boxSizing: 'border-box', fontFamily: 'inherit'
+                      resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
                     }}
-                  >
-                    {members.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.name || t(lang, 'unnamed')} {m.id === userId ? `(${t(lang, 'taskAssignSelf')})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
-              )}
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{
-                  flex: 1, padding: '13px', borderRadius: '12px',
-                  border: '2px solid #E5E7EB', background: 'white',
-                  fontSize: '15px', fontWeight: '700', cursor: 'pointer', color: '#374151'
-                }}>
-                  {t(lang, 'cancel')}
-                </button>
-                <button type="submit" disabled={saving} style={{
-                  flex: 2, padding: '13px',
-                  background: saving ? '#E5E7EB' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: saving ? '#9CA3AF' : 'white',
-                  border: 'none', borderRadius: '12px',
-                  fontSize: '15px', fontWeight: '700',
-                  cursor: saving ? 'not-allowed' : 'pointer'
-                }}>
-                  {saving ? t(lang, 'savingTask') : t(lang, 'saveTask')}
-                </button>
-              </div>
-            </form>
+                {/* ── Assign-to (managers) — pill buttons ── */}
+                {userIsManager && members.length > 1 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#6B7280', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {t(lang, 'taskAssignToLabel')}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {members.map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setAssignTo(m.id)}
+                          style={{
+                            padding: '8px 16px', borderRadius: '20px',
+                            border: `2px solid ${assignTo === m.id ? '#667eea' : '#E5E7EB'}`,
+                            background: assignTo === m.id ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#F9FAFB',
+                            color: assignTo === m.id ? 'white' : '#374151',
+                            fontSize: '13px', fontWeight: '700',
+                            cursor: 'pointer', WebkitTapHighlightColor: 'transparent'
+                          }}
+                        >
+                          {m.name || t(lang, 'unnamed')}{m.id === userId ? ` (${t(lang, 'taskAssignSelf')})` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </form>
+            </div>
+
+            {/* Fixed footer buttons */}
+            <div style={{
+              padding: '14px 20px 40px', display: 'flex', gap: '10px',
+              flexShrink: 0, borderTop: '1px solid #F3F4F6'
+            }}>
+              <button type="button" onClick={() => setShowModal(false)} style={{
+                flex: 1, padding: '13px', borderRadius: '12px',
+                border: '2px solid #E5E7EB', background: 'white',
+                fontSize: '15px', fontWeight: '700', cursor: 'pointer', color: '#374151',
+                WebkitTapHighlightColor: 'transparent'
+              }}>
+                {t(lang, 'cancel')}
+              </button>
+              <button type="submit" form="add-task-form" disabled={saving} style={{
+                flex: 2, padding: '13px',
+                background: saving ? '#E5E7EB' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: saving ? '#9CA3AF' : 'white',
+                border: 'none', borderRadius: '12px',
+                fontSize: '15px', fontWeight: '700',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                WebkitTapHighlightColor: 'transparent'
+              }}>
+                {saving ? t(lang, 'savingTask') : t(lang, 'saveTask')}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
