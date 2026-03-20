@@ -5,6 +5,7 @@ export function createPrismaMock() {
   return {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -73,6 +74,13 @@ export function createPrismaMock() {
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
+    },
+    userTask: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
   }
 }

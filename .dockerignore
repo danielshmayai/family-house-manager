@@ -6,3 +6,18 @@ node_modules
 .env.*
 *.md
 .claude
+
+# Dev-only files — never needed in the Docker build context
+tests/
+prisma/seed*.ts
+prisma/seed*.js
+scripts/generate-icons.js
+scripts/query_tasks.js
+scripts/restart.sh
+scripts/restart.bat
+vitest.config.ts
+playwright.config.*
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js

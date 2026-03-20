@@ -14,7 +14,7 @@ beforeEach(async () => {
 })
 
 async function callHandler(method: string, opts: { query?: any; body?: any } = {}) {
-  const { req, res } = createMocks({ method, query: opts.query ?? {}, body: opts.body ?? {} })
+  const { req, res } = createMocks({ method: method as any, query: opts.query ?? {}, body: opts.body ?? {} })
   const { default: handler } = await import('@/pages/api/categories')
   await handler(req as any, res as any)
   return { status: res._getStatusCode(), data: res._getJSONData() }

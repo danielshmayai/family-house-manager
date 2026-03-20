@@ -23,7 +23,7 @@ describe('GET /api/finance/goals', () => {
     vi.mocked(getServerSession).mockResolvedValue(null)
 
     const { GET } = await import('@/app/api/finance/goals/route')
-    const res = await GET(new Request('http://localhost/api/finance/goals') as any)
+    const res = await GET()
     expect(res.status).toBe(401)
   })
 
@@ -36,7 +36,7 @@ describe('GET /api/finance/goals', () => {
     ])
 
     const { GET } = await import('@/app/api/finance/goals/route')
-    const res = await GET(new Request('http://localhost/api/finance/goals') as any)
+    const res = await GET()
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data[0].name).toBe('פנסיה')

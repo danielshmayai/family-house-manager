@@ -14,7 +14,7 @@ beforeEach(async () => {
 })
 
 async function callHandler(method: string, opts: { query?: any; body?: any } = {}) {
-  const { req, res } = createMocks({ method, query: opts.query ?? {}, body: opts.body ?? {} })
+  const { req, res } = createMocks({ method: method as any, query: opts.query ?? {}, body: opts.body ?? {} })
   const { default: handler } = await import('@/pages/api/users')
   await handler(req as any, res as any)
   return { status: res._getStatusCode(), data: res._getJSONData() }
@@ -57,10 +57,10 @@ describe('PUT /api/users', () => {
   })
 })
 
-describe('Method handling', () => {
-  it('returns 405 for DELETE with JSON error body', async () => {
+describe('DELETE /api/users', () => {
+  it('requires id', async () => {
     const { status, data } = await callHandler('DELETE')
-    expect(status).toBe(405)
-    expect(data.error).toBeDefined()
+    expect(status).toBe(400)
+    expect(data.error).toMatch(/id required/i)
   })
 })

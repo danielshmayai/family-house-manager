@@ -14,14 +14,14 @@ beforeEach(async () => {
 })
 
 async function callHandler(method: string, opts: { query?: any; body?: any } = {}) {
-  const { req, res } = createMocks({ method, query: opts.query ?? {}, body: opts.body ?? {} })
+  const { req, res } = createMocks({ method: method as any, query: opts.query ?? {}, body: opts.body ?? {} })
   const { default: handler } = await import('@/pages/api/events')
   await handler(req as any, res as any)
   return { status: res._getStatusCode(), data: res._getJSONData() }
 }
 
 const mockUser = { id: 'u1', email: 'a@b.com', name: 'Alice', householdId: 'hh1', role: 'MEMBER' }
-const mockHousehold = { id: 'hh1', name: "Alice's Family" }
+
 const mockActivity = { id: 'act1', name: 'Cook dinner', frequency: 'DAILY', defaultPoints: 20, isActive: true }
 
 describe('POST /api/events', () => {

@@ -29,15 +29,17 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
+# standalone output already contains a minimal node_modules — do NOT copy the full one
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules ./node_modules
 
 # Create data directory for SQLite
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
-COPY --from=builder /app/scripts ./scripts
+# Only the scripts actually needed at runtime
+COPY --from=builder /app/scripts/migrate-data.js ./scripts/migrate-data.js
+COPY --from=builder /app/scripts/check_http.js ./scripts/check_http.js
 COPY --from=builder /app/data-migrations ./data-migrations
 
 # Script to run migrations then start

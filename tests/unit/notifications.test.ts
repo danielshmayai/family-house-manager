@@ -23,7 +23,7 @@ async function callNotificationsHandler(method: string, sessionOverride?: any) {
   vi.mocked(getServerSession).mockResolvedValue(
     sessionOverride !== undefined ? sessionOverride : { user: { id: 'u1', email: 'a@b.com' } }
   )
-  const { req, res } = createMocks({ method })
+  const { req, res } = createMocks({ method: method as any })
   const { default: handler } = await import('@/pages/api/notifications')
   await handler(req as any, res as any)
   return { status: res._getStatusCode(), data: res._getJSONData() }

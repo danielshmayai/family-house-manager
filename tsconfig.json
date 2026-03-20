@@ -30,7 +30,7 @@
   },
   "exclude": [
     "node_modules",
-    
+    "tests"
   ],
   "include": [
     "next-env.d.ts",

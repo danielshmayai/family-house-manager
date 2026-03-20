@@ -32,6 +32,9 @@ model User {
   financialGoals  FinancialGoal[]
   notifications   Notification[]
   assetSnapshots  AssetSnapshot[]
+  // My Tasks
+  tasksAssigned   UserTask[]          @relation("TasksAssignedBy")
+  tasksReceived   UserTask[]          @relation("TasksAssignedTo")
 }
 
 model Household {
@@ -44,6 +47,7 @@ model Household {
   events     Event[]
   invites    Invite[]
   members    User[]
+  userTasks  UserTask[]
 }
 
 model Invite {
@@ -120,6 +124,23 @@ model Event {
   activity     Activity? @relation(fields: [activityId], references: [id])
   points       Int       @default(0)
   metadata     String?
+}
+
+model UserTask {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  assignedById String
+  assignedToId String
+  householdId  String
+  isCompleted  Boolean   @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignedBy   User      @relation("TasksAssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
+  assignedTo   User      @relation("TasksAssignedTo", fields: [assignedToId], references: [id], onDelete: Cascade)
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 
 model BugReport {

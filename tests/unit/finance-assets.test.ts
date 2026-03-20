@@ -126,7 +126,7 @@ describe('PUT /api/finance/assets/[id]', () => {
 
     const { PUT } = await import('@/app/api/finance/assets/[id]/route')
     const req = new Request('http://localhost/api/finance/assets/asset1', { method: 'PUT', body: JSON.stringify({}) })
-    const res = await PUT(req as any, { params: { id: 'asset1' } })
+    const res = await PUT(req as any, { params: { id: 'asset1' } } as any)
     expect(res.status).toBe(401)
   })
 
@@ -138,7 +138,7 @@ describe('PUT /api/finance/assets/[id]', () => {
 
     const { PUT } = await import('@/app/api/finance/assets/[id]/route')
     const req = new Request('http://localhost/api/finance/assets/bad', { method: 'PUT', body: JSON.stringify({ currentValue: 5000 }) })
-    const res = await PUT(req as any, { params: { id: 'bad' } })
+    const res = await PUT(req as any, { params: { id: 'bad' } } as any)
     expect(res.status).toBe(404)
   })
 
@@ -156,7 +156,7 @@ describe('PUT /api/finance/assets/[id]', () => {
       method: 'PUT',
       body: JSON.stringify({ currentValue: 110000 }),
     })
-    const res = await PUT(req as any, { params: { id: 'asset1' } })
+    const res = await PUT(req as any, { params: { id: 'asset1' } } as any)
     expect(res.status).toBe(200)
     expect(prismaMock.assetSnapshot.create).toHaveBeenCalled()
   })
@@ -175,7 +175,7 @@ describe('PUT /api/finance/assets/[id]', () => {
       method: 'PUT',
       body: JSON.stringify({ currentValue: 120000 }),
     })
-    await PUT(req as any, { params: { id: 'asset1' } })
+    await PUT(req as any, { params: { id: 'asset1' } } as any)
     expect(prismaMock.notification.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ type: 'VALUE_CHANGE' }) })
     )
@@ -194,7 +194,7 @@ describe('PUT /api/finance/assets/[id]', () => {
       method: 'PUT',
       body: JSON.stringify({ currentValue: 100001, userId: 'hacker-u99' }),
     })
-    await PUT(req as any, { params: { id: 'asset1' } })
+    await PUT(req as any, { params: { id: 'asset1' } } as any)
     const callArg = prismaMock.financialAsset.update.mock.calls[0][0]
     // After fix: userId should NOT be in the update data
     expect(callArg.data.userId).toBeUndefined()
@@ -210,7 +210,7 @@ describe('DELETE /api/finance/assets/[id]', () => {
 
     const { DELETE } = await import('@/app/api/finance/assets/[id]/route')
     const req = new Request('http://localhost/api/finance/assets/asset1', { method: 'DELETE' })
-    const res = await DELETE(req as any, { params: { id: 'asset1' } })
+    const res = await DELETE(req as any, { params: { id: 'asset1' } } as any)
     expect(res.status).toBe(200)
     expect(prismaMock.financialAsset.updateMany).toHaveBeenCalledWith({
       where: { id: 'asset1', userId: 'u1' },
