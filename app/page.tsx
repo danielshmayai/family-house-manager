@@ -31,6 +31,12 @@ type Activity = {
   requiresPhoto?: boolean
 }
 
+type FamilyMember = {
+  id: string
+  name: string
+  role: string
+}
+
 type EventItem = {
   id: string
   eventType: string
@@ -57,6 +63,8 @@ export default function HomePage() {
   const [noteInput, setNoteInput] = useState('')
   const [photoInput, setPhotoInput] = useState<string | null>(null)
   const [viewModal, setViewModal] = useState<{ activity: Activity; note?: string; photo?: string } | null>(null)
+  const [householdMembers, setHouseholdMembers] = useState<FamilyMember[]>([])
+  const [proxyUserId, setProxyUserId] = useState<string | null>(null)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -74,7 +82,8 @@ export default function HomePage() {
 
       const eventsParams = new URLSearchParams()
       if (householdId) eventsParams.set('householdId', householdId)
-      if (userId) eventsParams.set('recordedById', userId)
+      const targetUserId = proxyUserId || userId
+      if (targetUserId) eventsParams.set('recordedById', targetUserId)
 
       const [categoriesRes, eventsRes] = await Promise.all([
         fetch(`/api/categories?${params}`, { signal: controller.signal }),
@@ -103,7 +112,7 @@ export default function HomePage() {
     } finally {
       setLoading(false)
     }
-  }, [householdId, userId])
+  }, [householdId, userId, proxyUserId])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -111,6 +120,14 @@ export default function HomePage() {
       loadData()
     }
   }, [status, loadData])
+
+  useEffect(() => {
+    if (!isManager || !householdId) return
+    fetch(`/api/users?householdId=${householdId}`)
+      .then(r => r.json())
+      .then(data => setHouseholdMembers(Array.isArray(data) ? data : []))
+      .catch(() => {})
+  }, [isManager, householdId])
 
   function handleActivityTap(activity: Activity) {
     if (activity.requiresNote || activity.requiresPhoto) {
@@ -132,7 +149,7 @@ export default function HomePage() {
 
       const payload: any = {
         eventType: 'ACTIVITY_COMPLETED',
-        recordedById: userId,
+        recordedById: proxyUserId || userId,
         activityId: activity.id,
         points: activity.defaultPoints,
         householdId,
@@ -299,6 +316,23 @@ export default function HomePage() {
                 <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: 'clamp(12px, 3vw, 14px)' }}>
                   {t(lang, 'earnPointsToday')}
                 </p>
+                {proxyUserId && (() => {
+                  const proxyMember = householdMembers.find(m => m.id === proxyUserId)
+                  return proxyMember ? (
+                    <div style={{
+                      marginTop: '8px',
+                      display: 'inline-flex', alignItems: 'center', gap: '6px',
+                      background: 'rgba(245,158,11,0.3)',
+                      border: '1px solid rgba(245,158,11,0.6)',
+                      borderRadius: '10px',
+                      padding: '4px 12px',
+                      fontSize: 'clamp(11px, 2.5vw, 13px)',
+                      fontWeight: '700'
+                    }}>
+                      👤 {t(lang, 'actingAsBanner')(proxyMember.name || t(lang, 'unnamed') as string)}
+                    </div>
+                  ) : null
+                })()}
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
                 <div style={{
@@ -438,6 +472,73 @@ export default function HomePage() {
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: '800', color: '#F59E0B' }}>{categories.length}</div>
               <div style={{ fontSize: 'clamp(10px, 2.5vw, 12px)', color: '#6B7280', fontWeight: '600', marginTop: '2px' }}>{t(lang, 'categories')}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Record-on-behalf selector (managers only) ─── */}
+      {status === 'authenticated' && householdId && isManager && householdMembers.length > 1 && (
+        <div style={{
+          maxWidth: '800px', margin: '0 auto clamp(8px, 2vw, 12px)',
+          padding: '0 clamp(12px, 3vw, 20px)'
+        }}>
+          <div style={{
+            background: proxyUserId ? 'linear-gradient(135deg, #FFF7ED, #FFEDD5)' : 'white',
+            border: proxyUserId ? '2px solid #F59E0B' : '2px solid #E5E7EB',
+            borderRadius: '14px',
+            padding: 'clamp(10px, 2.5vw, 14px) clamp(12px, 3vw, 16px)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+          }}>
+            <div style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', fontWeight: '700', color: '#6B7280', marginBottom: '8px' }}>
+              👤 {t(lang, 'actingAs')}
+            </div>
+            <div style={{
+              display: 'flex', gap: '8px', flexWrap: 'wrap'
+            }}>
+              {/* "Myself" button */}
+              <button
+                onClick={() => setProxyUserId(null)}
+                style={{
+                  padding: '8px 16px',
+                  minHeight: '36px',
+                  background: !proxyUserId ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#F3F4F6',
+                  color: !proxyUserId ? 'white' : '#374151',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: 'clamp(12px, 3vw, 14px)',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  boxShadow: !proxyUserId ? '0 2px 8px rgba(102,126,234,0.35)' : 'none',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                {t(lang, 'actingAsSelf')} ({sessionUser?.name?.split(' ')[0] || 'Me'})
+              </button>
+              {/* Other members */}
+              {householdMembers
+                .filter(m => m.id !== userId)
+                .map(member => (
+                  <button
+                    key={member.id}
+                    onClick={() => setProxyUserId(member.id)}
+                    style={{
+                      padding: '8px 16px',
+                      minHeight: '36px',
+                      background: proxyUserId === member.id ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' : '#F3F4F6',
+                      color: proxyUserId === member.id ? 'white' : '#374151',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: 'clamp(12px, 3vw, 14px)',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      boxShadow: proxyUserId === member.id ? '0 2px 8px rgba(245,158,11,0.4)' : 'none',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                  >
+                    {member.name || t(lang, 'unnamed')}
+                  </button>
+                ))}
             </div>
           </div>
         </div>

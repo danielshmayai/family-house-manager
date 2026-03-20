@@ -248,6 +248,11 @@ const t_map = {
     nameRequired2: 'Name is required',
     nameAndCatRequired: 'Name and category are required',
 
+    // ── Record on behalf ─────────────────────────────────────
+    actingAs: 'Recording for:',
+    actingAsSelf: 'Myself',
+    actingAsBanner: (name: string) => `Recording on behalf of ${name}`,
+
     // ── History ──────────────────────────────────────────────
     navHistory: 'History',
     historyTitle: '📜 Activity History',
@@ -500,6 +505,11 @@ const t_map = {
     resetSuccess: '✅ הפעילויות אופסו לברירת המחדל!',
     nameRequired2: 'שם הוא שדה חובה',
     nameAndCatRequired: 'שם וקטגוריה הם שדות חובה',
+
+    // ── Record on behalf ─────────────────────────────────────
+    actingAs: ':מסמן עבור',
+    actingAsSelf: 'עצמי',
+    actingAsBanner: (name: string) => `מסמן בשם ${name}`,
 
     // ── History ──────────────────────────────────────────────
     navHistory: 'היסטוריה',
