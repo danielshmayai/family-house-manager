@@ -25,7 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       include: {
         assignedBy: { select: { id: true, name: true, role: true } },
-        assignedTo: { select: { id: true, name: true } }
+        assignedTo: { select: { id: true, name: true } },
+        activity: { select: { id: true, name: true, icon: true, defaultPoints: true } }
       },
       orderBy: [{ isCompleted: 'asc' }, { createdAt: 'desc' }]
     })
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // ── POST: create a new task ───────────────────────────────────────────────
   if (req.method === 'POST') {
-    const { title, description, assignedToId } = req.body
+    const { title, description, assignedToId, activityId } = req.body
 
     if (!title?.trim()) return res.status(400).json({ error: 'Title is required' })
 
@@ -56,13 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: {
         title: title.trim(),
         description: description?.trim() || null,
+        activityId: activityId || null,
         assignedById: sessionUser.id,
         assignedToId: targetId,
         householdId: sessionUser.householdId
       },
       include: {
         assignedBy: { select: { id: true, name: true, role: true } },
-        assignedTo: { select: { id: true, name: true } }
+        assignedTo: { select: { id: true, name: true } },
+        activity: { select: { id: true, name: true, icon: true, defaultPoints: true } }
       }
     })
 
@@ -77,7 +80,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const task = await prisma.userTask.findUnique({
       where: { id },
-      include: { assignedBy: { select: { role: true } } }
+      include: {
+        assignedBy: { select: { role: true } },
+        activity: { select: { id: true, defaultPoints: true } }
+      }
     })
     if (!task) return res.status(404).json({ error: 'Task not found' })
     if (task.householdId !== sessionUser.householdId) return res.status(403).json({ error: 'Forbidden' })
@@ -95,9 +101,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       include: {
         assignedBy: { select: { id: true, name: true, role: true } },
-        assignedTo: { select: { id: true, name: true } }
+        assignedTo: { select: { id: true, name: true } },
+        activity: { select: { id: true, name: true, icon: true, defaultPoints: true } }
       }
     })
+
+    // If completing a task linked to an activity, fire an Event for it
+    if (isCompleted && task.activityId && task.activity) {
+      await prisma.event.create({
+        data: {
+          eventType: 'ACTIVITY_COMPLETED',
+          recordedById: task.assignedToId,
+          householdId: task.householdId,
+          activityId: task.activityId,
+          points: task.activity.defaultPoints,
+          metadata: JSON.stringify({ source: 'task', taskId: task.id })
+        }
+      })
+    }
 
     // Check if bonus should be awarded (only when completing, not un-completing)
     let bonusGranted = false

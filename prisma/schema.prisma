@@ -77,24 +77,25 @@ model Category {
 }
 
 model Activity {
-  id            String   @id @default(cuid())
-  key           String   @unique
+  id            String     @id @default(cuid())
+  key           String     @unique
   categoryId    String
-  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category      Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   name          String
   description   String?
   icon          String?
-  defaultPoints Int      @default(10)
-  frequency     String   @default("DAILY")
-  position      Int      @default(0)
-  isActive      Boolean  @default(true)
-  requiresNote  Boolean  @default(false)
-  requiresPhoto Boolean  @default(false)
+  defaultPoints Int        @default(10)
+  frequency     String     @default("DAILY")
+  position      Int        @default(0)
+  isActive      Boolean    @default(true)
+  requiresNote  Boolean    @default(false)
+  requiresPhoto Boolean    @default(false)
   config        String?
   createdById   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   events        Event[]
+  userTasks     UserTask[]
 }
 
 model Task {
@@ -130,6 +131,7 @@ model UserTask {
   id           String    @id @default(cuid())
   title        String
   description  String?
+  activityId   String?
   assignedById String
   assignedToId String
   householdId  String
@@ -138,6 +140,7 @@ model UserTask {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  activity     Activity? @relation(fields: [activityId], references: [id])
   assignedBy   User      @relation("TasksAssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
   assignedTo   User      @relation("TasksAssignedTo", fields: [assignedToId], references: [id], onDelete: Cascade)
   household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)

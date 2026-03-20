@@ -281,6 +281,8 @@ const t_map = {
     bonusMsg: (pts: number) => `+${pts} points for completing all assigned tasks!`,
     allTasksDone: '🏆 All manager tasks done!',
     viewingTasksFor: (name: string) => `Viewing tasks for: ${name}`,
+    taskFromActivityLabel: 'Link to Activity (optional)',
+    taskActivityNone: '— No activity —',
   },
 
   he: {
@@ -563,6 +565,8 @@ const t_map = {
     bonusMsg: (pts: number) => `!+${pts} נקודות על השלמת כל המשימות שהוקצו`,
     allTasksDone: '!🏆 כל משימות המנהל הושלמו',
     viewingTasksFor: (name: string) => `צפייה במשימות של: ${name}`,
+    taskFromActivityLabel: 'קישור לפעילות (אופציונלי)',
+    taskActivityNone: '— ללא פעילות —',
   },
 }
 

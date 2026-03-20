@@ -5,10 +5,20 @@ import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 
+type Activity = {
+  id: string
+  name: string
+  icon?: string | null
+  defaultPoints: number
+  category: { name: string }
+}
+
 type UserTask = {
   id: string
   title: string
   description?: string
+  activityId?: string | null
+  activity?: { id: string; name: string; icon?: string | null; defaultPoints: number } | null
   assignedById: string
   assignedToId: string
   isCompleted: boolean
@@ -52,6 +62,7 @@ export default function MyTasksPage() {
 
   const [tasks, setTasks] = useState<UserTask[]>([])
   const [members, setMembers] = useState<FamilyMember[]>([])
+  const [activities, setActivities] = useState<Activity[]>([])
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [toggling, setToggling] = useState<string | null>(null)
@@ -62,6 +73,7 @@ export default function MyTasksPage() {
   const [newTitle, setNewTitle] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [assignTo, setAssignTo] = useState<string>('')
+  const [selectedActivityId, setSelectedActivityId] = useState<string>('')
   const [saving, setSaving] = useState(false)
 
   // Bonus animation
@@ -92,11 +104,17 @@ export default function MyTasksPage() {
     if (!userIsManager || !householdId) return
     fetch(`/api/users?householdId=${householdId}`)
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setMembers(data)
-      })
+      .then(data => { if (Array.isArray(data)) setMembers(data) })
       .catch(() => {})
   }, [userIsManager, householdId])
+
+  useEffect(() => {
+    if (!userIsManager) return
+    fetch('/api/activities')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setActivities(data) })
+      .catch(() => {})
+  }, [userIsManager])
 
   // Split tasks
   const managerTasks = tasks.filter(t => t.assignedById !== t.assignedToId)
@@ -151,7 +169,8 @@ export default function MyTasksPage() {
         body: JSON.stringify({
           title: newTitle.trim(),
           description: newDesc.trim() || undefined,
-          assignedToId: assignTo || viewedUserId
+          assignedToId: assignTo || viewedUserId,
+          activityId: selectedActivityId || undefined
         })
       })
       if (res.ok) {
@@ -161,6 +180,7 @@ export default function MyTasksPage() {
         setNewTitle('')
         setNewDesc('')
         setAssignTo('')
+        setSelectedActivityId('')
       }
     } catch { /* ignore */ }
     finally { setSaving(false) }
@@ -170,6 +190,7 @@ export default function MyTasksPage() {
     setNewTitle('')
     setNewDesc('')
     setAssignTo(viewedUserId || '')
+    setSelectedActivityId('')
     setShowModal(true)
   }
 
@@ -429,11 +450,51 @@ export default function MyTasksPage() {
               </div>
             </div>
             <form onSubmit={handleAddTask}>
+              {/* Activity picker — only for managers */}
+              {userIsManager && activities.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <label
+                    htmlFor="task-activity-select"
+                    style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}
+                  >
+                    {t(lang, 'taskFromActivityLabel')}
+                  </label>
+                  <select
+                    id="task-activity-select"
+                    value={selectedActivityId}
+                    onChange={e => {
+                      const id = e.target.value
+                      setSelectedActivityId(id)
+                      if (id && !newTitle.trim()) {
+                        const act = activities.find(a => a.id === id)
+                        if (act) setNewTitle(act.name)
+                      }
+                    }}
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: '12px',
+                      border: '2px solid #E5E7EB', fontSize: '15px', outline: 'none',
+                      background: 'white', boxSizing: 'border-box', fontFamily: 'inherit'
+                    }}
+                  >
+                    <option value="">{t(lang, 'taskActivityNone')}</option>
+                    {activities.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.icon ? `${a.icon} ` : ''}{a.name} · {a.category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                <label
+                  htmlFor="task-title-input"
+                  style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}
+                >
                   {t(lang, 'taskTitleLabel')}
                 </label>
                 <input
+                  id="task-title-input"
                   autoFocus
                   value={newTitle}
                   onChange={e => setNewTitle(e.target.value)}
@@ -448,10 +509,11 @@ export default function MyTasksPage() {
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                <label htmlFor="task-desc-input" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
                   {t(lang, 'taskDescriptionLabel')}
                 </label>
                 <textarea
+                  id="task-desc-input"
                   value={newDesc}
                   onChange={e => setNewDesc(e.target.value)}
                   rows={2}
@@ -466,10 +528,11 @@ export default function MyTasksPage() {
               {/* Assign-to picker — only for managers */}
               {userIsManager && members.length > 1 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                  <label htmlFor="task-assign-select" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
                     {t(lang, 'taskAssignToLabel')}
                   </label>
                   <select
+                    id="task-assign-select"
                     value={assignTo}
                     onChange={e => setAssignTo(e.target.value)}
                     style={{
@@ -628,6 +691,15 @@ function TaskSection({
                         padding: '2px 8px', borderRadius: '999px'
                       }}>
                         👤 {task.assignedBy.name || '?'}
+                      </span>
+                    )}
+                    {task.activity && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: '700',
+                        background: '#FEF3C7', color: '#92400E',
+                        padding: '2px 8px', borderRadius: '999px'
+                      }}>
+                        {task.activity.icon || '⚡'} {task.activity.name}
                       </span>
                     )}
                     {task.isCompleted && task.completedAt && (
