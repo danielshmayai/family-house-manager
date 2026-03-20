@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
+import { compressImage } from '@/lib/compressImage'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import LanguageToggle from '@/components/LanguageToggle'
@@ -223,25 +224,17 @@ export default function Admin() {
   const iconOptions = ['📌', '🏠', '🧹', '🍽️', '🧺', '🌱', '🔧', '💪', '📚', '🎯', '⭐', '✓', '✨', '🎨', '💼', '🛁', '🐕', '🚗', '🛒', '🍳', '🧴', '🪴', '📦', '🔑']
   const colorOptions = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
 
-  function handleImageUpload(file: File, target: 'category' | 'activity') {
+  async function handleImageUpload(file: File, target: 'category' | 'activity') {
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file (PNG, JPG, GIF, SVG, WebP)')
       return
     }
-    if (file.size > 512 * 1024) {
-      alert('Image must be under 512 KB. Try a smaller image or an emoji instead.')
-      return
+    const dataUri = await compressImage(file)
+    if (target === 'category') {
+      setEditingCategory(prev => prev ? { ...prev, icon: dataUri } : prev)
+    } else {
+      setEditingActivity(prev => prev ? { ...prev, icon: dataUri } : prev)
     }
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUri = e.target?.result as string
-      if (target === 'category') {
-        setEditingCategory(prev => prev ? { ...prev, icon: dataUri } : prev)
-      } else {
-        setEditingActivity(prev => prev ? { ...prev, icon: dataUri } : prev)
-      }
-    }
-    reader.readAsDataURL(file)
   }
 
   // Loading state
