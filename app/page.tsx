@@ -4,9 +4,11 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import IconDisplay from '@/components/IconDisplay'
 import LanguageToggle from '@/components/LanguageToggle'
+import WhatsNewModal from '@/components/WhatsNewModal'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import { compressImage } from '@/lib/compressImage'
+import { LATEST_VERSION, WHATS_NEW_STORAGE_KEY } from '@/lib/changelog'
 
 type Category = {
   id: string
@@ -65,6 +67,7 @@ export default function HomePage() {
   const [viewModal, setViewModal] = useState<{ activity: Activity; note?: string; photo?: string } | null>(null)
   const [householdMembers, setHouseholdMembers] = useState<FamilyMember[]>([])
   const [proxyUserId, setProxyUserId] = useState<string | null>(null)
+  const [showWhatsNew, setShowWhatsNew] = useState(false)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -118,6 +121,8 @@ export default function HomePage() {
     if (status === 'loading') return
     if (status === 'authenticated') {
       loadData()
+      const lastSeen = localStorage.getItem(WHATS_NEW_STORAGE_KEY)
+      if (lastSeen !== LATEST_VERSION) setShowWhatsNew(true)
     }
   }, [status, loadData])
 
@@ -345,6 +350,22 @@ export default function HomePage() {
                   <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: '700', marginTop: '2px' }}>{t(lang, 'ptsToday')}</div>
                 </div>
                 <LanguageToggle />
+                <button
+                  onClick={() => setShowWhatsNew(true)}
+                  style={{
+                    padding: '10px 14px',
+                    background: 'rgba(255,255,255,0.2)',
+                    border: '2px solid rgba(255,255,255,0.4)',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: 'clamp(12px, 3vw, 14px)',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  🎉
+                </button>
                 <button
                   onClick={async () => { await signOut({ redirect: false }); window.location.href = '/auth/login' }}
                   style={{
@@ -1042,6 +1063,14 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── What's New Modal ─── */}
+      {showWhatsNew && (
+        <WhatsNewModal onClose={() => {
+          localStorage.setItem(WHATS_NEW_STORAGE_KEY, LATEST_VERSION)
+          setShowWhatsNew(false)
+        }} />
       )}
     </div>
   )

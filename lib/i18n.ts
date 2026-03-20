@@ -283,6 +283,15 @@ const t_map = {
     viewingTasksFor: (name: string) => `Viewing tasks for: ${name}`,
     taskFromActivityLabel: 'Link to Activity (optional)',
     taskActivityNone: '— No activity —',
+
+    // ── What's New ───────────────────────────────────────────
+    whatsNewTitle: "🎉 What's New",
+    whatsNewSubtitle: 'Here\'s what changed in the latest updates',
+    whatsNewClose: 'Got it!',
+    whatsNewOpen: "What's New",
+    whatsNewBadgeNew: 'NEW',
+    whatsNewBadgeImproved: 'IMPROVED',
+    whatsNewBadgeFix: 'FIX',
   },
 
   he: {
@@ -567,6 +576,15 @@ const t_map = {
     viewingTasksFor: (name: string) => `צפייה במשימות של: ${name}`,
     taskFromActivityLabel: 'קישור לפעילות (אופציונלי)',
     taskActivityNone: '— ללא פעילות —',
+
+    // ── What's New ───────────────────────────────────────────
+    whatsNewTitle: '🎉 מה חדש',
+    whatsNewSubtitle: 'הנה מה שהשתנה בעדכונים האחרונים',
+    whatsNewClose: 'הבנתי!',
+    whatsNewOpen: 'מה חדש',
+    whatsNewBadgeNew: 'חדש',
+    whatsNewBadgeImproved: 'שופר',
+    whatsNewBadgeFix: 'תיקון',
   },
 }
 

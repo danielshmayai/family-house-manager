@@ -76,3 +76,21 @@ module.exports = {
 - If a data migration is needed: write the file, then summarise what it does and why.
 - If no data migration is needed: list each schema change and one sentence explaining why it is safe for existing data.
 - Never skip the analysis step — always show your reasoning before writing or declining.
+
+## Lessons learned
+
+### New model added via migration — always use CREATE TABLE, never ALTER TABLE
+
+**Incident (2026-03-20):** A migration for the new `UserTask` model used `ALTER TABLE "UserTask" ADD COLUMN "activityId" TEXT`. Because `UserTask` had never been created by any prior migration, `ALTER TABLE` failed with `no such table: UserTask` on Fly.io. Prisma recorded the migration as **failed** in `_prisma_migrations`, which caused every subsequent deploy to abort with *"migrate found failed migrations in the target database"*.
+
+**Rule:** When adding a brand-new model, the migration SQL **must** use `CREATE TABLE`, not `ALTER TABLE`. Check the migration history for `CREATE TABLE "<ModelName>"` before writing any `ALTER TABLE` that references it. If no `CREATE TABLE` exists in any prior migration, the correct SQL is a full `CREATE TABLE` with all columns and constraints.
+
+**Recovery pattern (if a migration is already recorded as failed in production):**
+Add a step to `start.sh` **before** `prisma migrate deploy` that marks the failed migration as rolled-back only when it is in a failed state:
+```js
+p.$executeRawUnsafe(
+  "UPDATE _prisma_migrations SET rolled_back_at = datetime('now') WHERE migration_name = ? AND finished_at IS NULL AND rolled_back_at IS NULL",
+  '<migration_name>'
+)
+```
+This is safe to run on every startup — the `WHERE` clause ensures it is a no-op once the migration has been successfully applied.
