@@ -36,7 +36,7 @@
     "react-dom": "19.2.4",
     "recharts": "^3.7.0",
     "resend": "^6.9.4",
-    "swr": "2.2.4",
+    "swr": "2.4.1",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
