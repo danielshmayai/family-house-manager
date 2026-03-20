@@ -804,6 +804,7 @@ export default function HomePage() {
             {[
               { path: '/', icon: '🏠', labelKey: 'navHome' as const },
               { path: '/my-tasks', icon: '✅', labelKey: 'navMyTasks' as const },
+              { path: '/history', icon: '📜', labelKey: 'navHistory' as const },
               { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
               { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
               ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : []),
