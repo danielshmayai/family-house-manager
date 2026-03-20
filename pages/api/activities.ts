@@ -1,20 +1,28 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '@/lib/prisma'
+import { getSessionUser } from '@/lib/apiAuth'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const sessionUser = await getSessionUser(req, res)
+  if (!sessionUser) return res.status(401).json({ error: 'Unauthorized' })
+  if (!sessionUser.householdId) return res.status(400).json({ error: 'No household' })
+
+  const householdId = sessionUser.householdId
+
   if (req.method === 'GET') {
     try {
       const { id, categoryId, includeInactive } = req.query
 
       if (id) {
-        const activity = await prisma.activity.findUnique({
-          where: { id: String(id) },
+        const activity = await prisma.activity.findFirst({
+          where: { id: String(id), householdId },
           include: { category: true }
         })
+        if (!activity) return res.status(404).json({ error: 'Not found' })
         return res.status(200).json(activity)
       }
 
-      const where: any = {}
+      const where: any = { householdId }
       if (categoryId) where.categoryId = String(categoryId)
       if (!includeInactive) where.isActive = true
 
@@ -65,6 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: {
           key: key || `activity_${Date.now()}`,
           categoryId,
+          householdId,
           name,
           description,
           icon,
@@ -75,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           requiresNote: requiresNote || false,
           requiresPhoto: requiresPhoto || false,
           config: config ? JSON.stringify(config) : null,
-          createdById: createdById || 'system'
+          createdById: createdById || sessionUser.id
         },
         include: { category: true }
       })
