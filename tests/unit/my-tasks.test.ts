@@ -243,9 +243,18 @@ describe('DELETE /api/my-tasks', () => {
     expect(status).toBe(403)
   })
 
-  it('forbids member from deleting a manager-assigned task', async () => {
+  it('allows member to cancel a manager-assigned task assigned to them', async () => {
     mockGetSessionUser.mockResolvedValue(MEMBER)
     prismaMock.userTask.findUnique.mockResolvedValue({ ...baseTask, assignedById: 'u2', assignedToId: 'u1' })
+    prismaMock.userTask.delete.mockResolvedValue({})
+    const { status, data } = await callHandler('DELETE', { query: { id: 't1' } })
+    expect(status).toBe(200)
+    expect(data.success).toBe(true)
+  })
+
+  it('forbids member from deleting a task assigned to someone else', async () => {
+    mockGetSessionUser.mockResolvedValue(MEMBER)
+    prismaMock.userTask.findUnique.mockResolvedValue({ ...baseTask, assignedById: 'u2', assignedToId: 'u3' })
     const { status } = await callHandler('DELETE', { query: { id: 't1' } })
     expect(status).toBe(403)
   })
