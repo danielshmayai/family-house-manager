@@ -12,6 +12,9 @@ server_ui.log
 tsconfig.tsbuildinfo
 next-env.d.ts
 
+# Local Claude Code settings (may contain personal tokens)
+.claude/settings.local.json
+
 # Local restart scripts (ignored because they may contain machine-specific commands)
 /scripts/restart.sh
 /scripts/restart.bat
