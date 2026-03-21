@@ -13,8 +13,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "seed:modular": "tsx prisma/seed-modular.ts",
-    "seed:finance": "tsx prisma/seed-finance.ts",
-    "setup": "npm install && prisma migrate dev && npm run seed:modular",
+"setup": "npm install && prisma migrate dev && npm run seed:modular",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
