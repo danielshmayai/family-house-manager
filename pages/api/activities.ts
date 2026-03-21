@@ -15,14 +15,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (id) {
         const activity = await prisma.activity.findFirst({
-          where: { id: String(id), householdId },
+          where: { id: String(id), category: { OR: [{ householdId }, { householdId: null }] } },
           include: { category: true }
         })
         if (!activity) return res.status(404).json({ error: 'Not found' })
         return res.status(200).json(activity)
       }
 
-      const where: any = { householdId }
+      const where: any = {
+        category: { OR: [{ householdId }, { householdId: null }] }
+      }
       if (categoryId) where.categoryId = String(categoryId)
       if (!includeInactive) where.isActive = true
 
@@ -73,7 +75,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         data: {
           key: key || `activity_${Date.now()}`,
           categoryId,
-          householdId,
           name,
           description,
           icon,
