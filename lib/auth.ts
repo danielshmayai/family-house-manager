@@ -32,7 +32,7 @@ export const authOptions: AuthOptions = {
     }),
   ],
   session: { strategy: 'jwt' },
-  pages: { signIn: '/finance/login' },
+  pages: { signIn: '/auth/login' },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
