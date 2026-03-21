@@ -150,7 +150,11 @@ export default function MyTasksPage() {
   }
 
   async function deleteTask(task: UserTask) {
-    if (!confirm(t(lang, 'deleteTaskConfirm')(task.title))) return
+    const isSelf = task.assignedById === task.assignedToId
+    const confirmMsg = isSelf
+      ? t(lang, 'deleteTaskConfirm')(task.title)
+      : t(lang, 'cancelAssignmentConfirm')(task.title)
+    if (!confirm(confirmMsg)) return
     setDeleting(task.id)
     try {
       const res = await fetch(`/api/my-tasks?id=${task.id}`, { method: 'DELETE' })
@@ -711,7 +715,8 @@ function TaskSection({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {tasks.map(task => {
           const isSelf = task.assignedById === task.assignedToId
-          const canDelete = userIsManager || (isSelf && task.assignedToId === sessionUserId)
+          const canDelete = userIsManager || task.assignedToId === sessionUserId
+          const activityIcon = task.activity?.icon || '📋'
 
           return (
             <div key={task.id} style={{
@@ -726,7 +731,7 @@ function TaskSection({
               opacity: deleting === task.id ? 0.4 : 1
             }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                {/* Toggle checkbox */}
+                {/* Toggle checkbox - first in DOM = rightmost in RTL */}
                 <button
                   onClick={() => onToggle(task)}
                   disabled={!!toggling}
@@ -748,14 +753,36 @@ function TaskSection({
 
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 'clamp(14px, 3.5vw, 15px)',
-                    fontWeight: '700',
-                    color: task.isCompleted ? '#6B7280' : '#1F2937',
-                    textDecoration: task.isCompleted ? 'line-through' : 'none',
-                    wordBreak: 'break-word'
-                  }}>
-                    {task.title}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    <div style={{
+                      flex: 1,
+                      fontSize: 'clamp(14px, 3.5vw, 15px)',
+                      fontWeight: '700',
+                      color: task.isCompleted ? '#6B7280' : '#1F2937',
+                      textDecoration: task.isCompleted ? 'line-through' : 'none',
+                      wordBreak: 'break-word'
+                    }}>
+                      {task.title}
+                    </div>
+                    {/* Cancel/delete button - small, inside content */}
+                    {canDelete && (
+                      <button
+                        onClick={() => onDelete(task)}
+                        disabled={!!deleting}
+                        style={{
+                          flexShrink: 0,
+                          background: 'none', border: 'none',
+                          cursor: deleting ? 'not-allowed' : 'pointer',
+                          fontSize: '14px', color: '#D1D5DB',
+                          padding: '0 2px',
+                          WebkitTapHighlightColor: 'transparent',
+                          lineHeight: 1
+                        }}
+                        title={isSelf ? 'Delete' : 'Cancel assignment'}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                   {task.description && (
                     <div style={{
@@ -792,25 +819,16 @@ function TaskSection({
                   </div>
                 </div>
 
-                {/* Delete button */}
-                {canDelete && (
-                  <button
-                    onClick={() => onDelete(task)}
-                    disabled={!!deleting}
-                    style={{
-                      flexShrink: 0,
-                      background: 'none', border: 'none',
-                      cursor: deleting ? 'not-allowed' : 'pointer',
-                      fontSize: '18px', color: '#D1D5DB',
-                      padding: '2px 4px',
-                      WebkitTapHighlightColor: 'transparent',
-                      lineHeight: 1
-                    }}
-                    title="Delete"
-                  >
-                    🗑️
-                  </button>
-                )}
+                {/* Activity icon - last in DOM = leftmost in RTL */}
+                <div style={{
+                  flexShrink: 0,
+                  fontSize: '22px',
+                  lineHeight: 1,
+                  marginTop: '2px',
+                  opacity: task.isCompleted ? 0.5 : 1
+                }}>
+                  {activityIcon}
+                </div>
               </div>
             </div>
           )
