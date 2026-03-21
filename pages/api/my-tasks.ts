@@ -184,9 +184,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!task) return res.status(404).json({ error: 'Task not found' })
     if (task.householdId !== sessionUser.householdId) return res.status(403).json({ error: 'Forbidden' })
 
-    // Managers can delete any task; members can only delete their own self-assigned tasks
-    const isSelfAssigned = task.assignedById === task.assignedToId
-    if (!isManager(sessionUser.role) && !(isSelfAssigned && task.assignedToId === sessionUser.id)) {
+    // Managers can delete any task; any user can cancel/delete tasks assigned to them
+    if (!isManager(sessionUser.role) && task.assignedToId !== sessionUser.id) {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
