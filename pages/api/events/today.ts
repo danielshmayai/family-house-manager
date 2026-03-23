@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../../lib/prisma'
+import { withLogging } from '../../../lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse){
+async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method === 'GET'){
       const today = new Date()
@@ -35,8 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     res.status(405).end()
-  }catch(e){
-    console.error(e)
+  }catch(e: any){
+    console.error('[events/today] error:', e?.stack || e)
     res.status(500).json({ error: 'server error' })
   }
 }
+
+export default withLogging(handler)

@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../lib/prisma'
+import { withLogging } from '../../lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse){
+async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method === 'GET'){
       const { id, householdId, includeInactive } = req.query
@@ -120,7 +121,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(405).end()
   }catch(e: any){
-    console.error(e)
+    console.error('[categories] error:', e?.stack || e)
     res.status(500).json({ error: e.message || 'server error' })
   }
 }
+
+export default withLogging(handler)

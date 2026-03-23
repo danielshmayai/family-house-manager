@@ -4,8 +4,9 @@ import { v4 as uuidv4 } from 'uuid'
 import { getSessionUser } from '../../lib/apiAuth'
 import { sendApprovalRequestEmail } from '../../lib/email'
 import { PRODUCT_ADMIN_EMAIL } from '../../lib/productAdmin'
+import { withLogging } from '../../lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse){
+async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method === 'DELETE') {
       const sessionUser = await getSessionUser(req, res)
@@ -81,8 +82,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     res.status(405).end()
-  }catch(e){
-    console.error(e)
+  }catch(e: any){
+    console.error('[households] error:', e?.stack || e)
     res.status(500).json({ error: 'server error' })
   }
 }
+
+export default withLogging(handler)

@@ -2,8 +2,9 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import prisma from '../../lib/prisma'
 import { getSessionUser, verifyHouseholdAccess } from '../../lib/apiAuth'
 import { rateLimit } from '../../lib/rateLimit'
+import { withLogging } from '../../lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse){
+async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method === 'POST'){
       if (rateLimit(req, res, { max: 30, windowMs: 60_000, keyPrefix: 'events-post' })) return
@@ -213,8 +214,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     res.status(405).end()
-  }catch(e){
-    console.error(e)
+  }catch(e: any){
+    console.error('[events] error:', e?.stack || e)
     res.status(500).json({ error: 'server error' })
   }
 }
+
+export default withLogging(handler)
