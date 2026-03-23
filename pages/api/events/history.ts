@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { categoryId: String(categoryId) },
         select: { id: true }
       })
-      categoryActivityIds = catActivities.map(a => a.id)
+      categoryActivityIds = catActivities.map((a: { id: string }) => a.id)
     }
 
     const where: any = { householdId }
