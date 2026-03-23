@@ -6,8 +6,9 @@ import { rateLimit } from '../../../lib/rateLimit'
 import { seedHouseholdDefaults } from '../../../lib/defaultActivities'
 import { sendApprovalRequestEmail } from '../../../lib/email'
 import { PRODUCT_ADMIN_EMAIL } from '../../../lib/productAdmin'
+import { withLogging } from '../../../lib/withLogging'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse){
+async function handler(req: NextApiRequest, res: NextApiResponse){
   try{
     if (req.method !== 'POST') return res.status(405).end()
     if (rateLimit(req, res, { max: 5, windowMs: 60_000, keyPrefix: 'register' })) return
@@ -121,8 +122,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.json({ pending: true })
 
-  }catch(e){
-    console.error(e)
+  }catch(e: any){
+    console.error('[auth/register] error:', e?.stack || e)
     res.status(500).json({ error: 'Server error. Please try again.' })
   }
 }
+
+export default withLogging(handler)
