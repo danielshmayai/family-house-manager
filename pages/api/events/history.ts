@@ -148,11 +148,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     // Categories (for filter dropdowns)
+    console.log('[history API] fetching categories for householdId:', householdId)
     const categories = await prisma.category.findMany({
       where: { householdId },
       select: { id: true, name: true, icon: true, color: true },
       orderBy: { position: 'asc' }
     })
+    console.log('[history API] categories found:', categories.length, categories.map((c: any) => ({ id: c.id, name: c.name })))
+
+    // Debug: also count ALL categories in DB and those with null householdId
+    const [totalCatsInDb, nullHouseholdCats] = await Promise.all([
+      prisma.category.count({}),
+      prisma.category.count({ where: { householdId: null } }),
+    ])
+    console.log('[history API] DEBUG — total categories in DB:', totalCatsInDb, '| householdId=null:', nullHouseholdCats)
 
     // Activities for the given category (for filter dropdown)
     const allActivities = await prisma.activity.findMany({
@@ -160,6 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       select: { id: true, name: true, icon: true, categoryId: true },
       orderBy: { position: 'asc' }
     })
+    console.log('[history API] activities found:', allActivities.length)
 
     console.log('[history API] all queries done, returning response')
     return res.json({

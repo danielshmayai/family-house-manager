@@ -156,13 +156,17 @@ export default function HistoryPage() {
         setFetchError(msg)
         return
       }
+      console.log('[History] API response keys:', Object.keys(data))
+      console.log('[History] categories from API:', data.categories?.length, data.categories)
+      console.log('[History] activities from API:', data.activities?.length)
+      console.log('[History] members from API:', data.members?.length)
       setEvents(data.events)
       setTotal(data.total)
       setTopActivities(data.topActivities)
       setPerUser(data.perUser)
       setMembers(data.members)
-      setCategories(data.categories)
-      setActivities(data.activities)
+      setCategories(data.categories ?? [])
+      setActivities(data.activities ?? [])
     } catch (err: any) {
       const msg = err?.message ?? String(err)
       console.error('[History] fetchHistory exception:', msg)
