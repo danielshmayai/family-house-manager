@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
-import IconDisplay from '@/components/IconDisplay'
+import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
 
 type EventItem = {
   id: string
@@ -260,14 +260,14 @@ export default function HistoryPage() {
             style={selectStyle}>
             <option value="">{isHe ? '📁 כל הקטגוריות' : '📁 All categories'}</option>
             {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.icon || '📁'} {c.name}</option>
+              <option key={c.id} value={c.id}>{isImageIcon(c.icon) ? '📁' : (c.icon || '📁')} {c.name}</option>
             ))}
           </select>
           <select value={filterActivity} onChange={e => setFilterActivity(e.target.value)}
             style={selectStyle}>
             <option value="">{isHe ? '⭐ כל הפעילויות' : '⭐ All activities'}</option>
             {filteredActivities.map(a => (
-              <option key={a.id} value={a.id}>{a.icon || '⭐'} {a.name}</option>
+              <option key={a.id} value={a.id}>{isImageIcon(a.icon) ? '⭐' : (a.icon || '⭐')} {a.name}</option>
             ))}
           </select>
         </div>
