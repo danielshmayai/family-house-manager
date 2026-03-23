@@ -123,12 +123,14 @@ export default function HistoryPage() {
   const [viewTab, setViewTab] = useState<ViewTab>('timeline')
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [detailModal, setDetailModal] = useState<EventItem | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const sessionUser = session?.user as any
 
   const fetchHistory = useCallback(async () => {
     if (!sessionUser?.householdId) return
     setLoading(true)
+    setFetchError(null)
     try {
       const { startDate, endDate } = getDateRange(range)
       const params = new URLSearchParams()
@@ -140,8 +142,20 @@ export default function HistoryPage() {
       params.set('limit', '500')
 
       const res = await fetch(`/api/events/history?${params}`)
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        const msg = `HTTP ${res.status}: ${errBody?.detail || errBody?.error || res.statusText}`
+        console.error('[History] API error:', msg, errBody)
+        setFetchError(msg)
+        return
+      }
       const data = await res.json()
+      if (!data.events) {
+        const msg = 'Response missing events field: ' + JSON.stringify(Object.keys(data))
+        console.error('[History]', msg)
+        setFetchError(msg)
+        return
+      }
       setEvents(data.events)
       setTotal(data.total)
       setTopActivities(data.topActivities)
@@ -149,8 +163,10 @@ export default function HistoryPage() {
       setMembers(data.members)
       setCategories(data.categories)
       setActivities(data.activities)
-    } catch {
-      // silent
+    } catch (err: any) {
+      const msg = err?.message ?? String(err)
+      console.error('[History] fetchHistory exception:', msg)
+      setFetchError(msg)
     } finally {
       setLoading(false)
     }
@@ -158,9 +174,10 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) { router.push('/auth/login'); return }
+    if (status === 'unauthenticated') { router.push('/auth/login'); return }
     fetchHistory()
-  }, [status, session, fetchHistory, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, fetchHistory])
 
   const filteredActivities = filterCategory
     ? activities.filter(a => a.categoryId === filterCategory)
@@ -250,6 +267,17 @@ export default function HistoryPage() {
             ))}
           </select>
         </div>
+
+        {/* ── Debug Error Banner ── */}
+        {fetchError && (
+          <div style={{
+            background: '#FEE2E2', border: '2px solid #EF4444', borderRadius: '10px',
+            padding: '10px 14px', marginBottom: '12px', fontSize: '12px',
+            color: '#991B1B', fontWeight: '600', wordBreak: 'break-all',
+          }}>
+            🐛 שגיאה: {fetchError}
+          </div>
+        )}
 
         {/* ── Summary Cards ── */}
         <div style={{

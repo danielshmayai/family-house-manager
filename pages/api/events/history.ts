@@ -15,14 +15,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { startDate, endDate, userId, activityId, categoryId, limit: lim, offset: off } = req.query
 
+    console.log('[history API] query params:', { startDate, endDate, userId, activityId, categoryId, lim, off })
+
     // groupBy doesn't support relation filters — resolve activityIds for the category upfront
     let categoryActivityIds: string[] | undefined
     if (categoryId && !activityId) {
+      console.log('[history API] resolving activityIds for categoryId:', categoryId)
       const catActivities = await prisma.activity.findMany({
         where: { categoryId: String(categoryId) },
         select: { id: true }
       })
       categoryActivityIds = catActivities.map((a: { id: string }) => a.id)
+      console.log('[history API] categoryActivityIds:', categoryActivityIds)
     }
 
     const where: any = { householdId }
@@ -36,6 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const take = Math.min(Number(lim) || 200, 500)
     const skip = Number(off) || 0
 
+    console.log('[history API] main where:', JSON.stringify(where))
     const [events, total] = await Promise.all([
       prisma.event.findMany({
         where,
@@ -61,9 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (userId) statsWhere.recordedById = String(userId)
     if (categoryActivityIds) statsWhere.activityId = { in: categoryActivityIds }
 
+    console.log('[history API] statsWhere before groupBy:', JSON.stringify(statsWhere))
+    const groupByWhere = categoryActivityIds
+      ? { ...statsWhere, activityId: { in: categoryActivityIds } }
+      : { ...statsWhere, activityId: { not: null } }
+    console.log('[history API] groupByWhere:', JSON.stringify(groupByWhere))
     const activityStats = await prisma.event.groupBy({
       by: ['activityId'],
-      where: { ...statsWhere, activityId: { not: null } },
+      where: groupByWhere,
       _count: { id: true },
       _sum: { points: true },
       orderBy: { _count: { id: 'desc' } },
@@ -143,8 +153,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       categories,
       activities: allActivities,
     })
-  } catch (e) {
-    console.error(e)
-    return res.status(500).json({ error: 'Server error' })
+  } catch (e: any) {
+    console.error('[history API] CRASH:', e?.message, e?.stack)
+    return res.status(500).json({ error: 'Server error', detail: e?.message ?? String(e) })
   }
 }
