@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
@@ -179,12 +179,12 @@ export default function HistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, fetchHistory])
 
-  const filteredActivities = filterCategory
-    ? activities.filter(a => a.categoryId === filterCategory)
-    : activities
-
-  const grouped = groupByDay(events, lang)
-  const totalPoints = events.reduce((s, e) => s + e.points, 0)
+  const filteredActivities = useMemo(
+    () => filterCategory ? activities.filter(a => a.categoryId === filterCategory) : activities,
+    [activities, filterCategory]
+  )
+  const grouped = useMemo(() => groupByDay(events, lang), [events, lang])
+  const totalPoints = useMemo(() => events.reduce((s, e) => s + e.points, 0), [events])
 
   if (status === 'loading' || loading) {
     return (
