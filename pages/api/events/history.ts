@@ -15,13 +15,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { startDate, endDate, userId, activityId, categoryId, limit: lim, offset: off } = req.query
 
+    // groupBy doesn't support relation filters — resolve activityIds for the category upfront
+    let categoryActivityIds: string[] | undefined
+    if (categoryId && !activityId) {
+      const catActivities = await prisma.activity.findMany({
+        where: { categoryId: String(categoryId) },
+        select: { id: true }
+      })
+      categoryActivityIds = catActivities.map(a => a.id)
+    }
+
     const where: any = { householdId }
 
     if (startDate) where.occurredAt = { ...where.occurredAt, gte: new Date(String(startDate)) }
     if (endDate) where.occurredAt = { ...where.occurredAt, lte: new Date(String(endDate)) }
     if (userId) where.recordedById = String(userId)
     if (activityId) where.activityId = String(activityId)
-    if (categoryId) where.activity = { categoryId: String(categoryId) }
+    else if (categoryActivityIds) where.activityId = { in: categoryActivityIds }
 
     const take = Math.min(Number(lim) || 200, 500)
     const skip = Number(off) || 0
@@ -49,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (startDate) statsWhere.occurredAt = { ...statsWhere.occurredAt, gte: new Date(String(startDate)) }
     if (endDate) statsWhere.occurredAt = { ...statsWhere.occurredAt, lte: new Date(String(endDate)) }
     if (userId) statsWhere.recordedById = String(userId)
-    if (categoryId) statsWhere.activity = { categoryId: String(categoryId) }
+    if (categoryActivityIds) statsWhere.activityId = { in: categoryActivityIds }
 
     const activityStats = await prisma.event.groupBy({
       by: ['activityId'],
