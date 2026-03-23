@@ -41,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const skip = Number(off) || 0
 
     console.log('[history API] main where:', JSON.stringify(where))
+    console.log('[history API] calling findMany + count...')
     const [events, total] = await Promise.all([
       prisma.event.findMany({
         where,
@@ -71,14 +72,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? { ...statsWhere, activityId: { in: categoryActivityIds } }
       : { ...statsWhere, activityId: { not: null } }
     console.log('[history API] groupByWhere:', JSON.stringify(groupByWhere))
-    const activityStats = await prisma.event.groupBy({
-      by: ['activityId'],
-      where: groupByWhere,
-      _count: { id: true },
-      _sum: { points: true },
-      orderBy: { _count: { id: 'desc' } },
-      take: 20,
-    })
+    console.log('[history API] calling activityStats groupBy...')
+    let activityStats: any[] = []
+    try {
+      activityStats = await prisma.event.groupBy({
+        by: ['activityId'],
+        where: groupByWhere,
+        _count: { id: true },
+        _sum: { points: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 20,
+      })
+      console.log('[history API] activityStats groupBy OK, rows:', activityStats.length)
+    } catch (gbErr: any) {
+      console.error('[history API] activityStats groupBy FAILED:', gbErr?.message, gbErr?.stack)
+      // Non-fatal: continue with empty stats
+    }
 
     // Resolve activity names for stats
     const activityIds = activityStats.map((s: any) => s.activityId).filter(Boolean) as string[]
@@ -100,13 +109,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }))
 
     // Per-user stats
-    const userStats = await prisma.event.groupBy({
-      by: ['recordedById'],
-      where: statsWhere,
-      _count: { id: true },
-      _sum: { points: true },
-      orderBy: { _sum: { points: 'desc' } },
-    })
+    console.log('[history API] calling userStats groupBy...')
+    let userStats: any[] = []
+    try {
+      userStats = await prisma.event.groupBy({
+        by: ['recordedById'],
+        where: statsWhere,
+        _count: { id: true },
+        _sum: { points: true },
+        orderBy: { _sum: { points: 'desc' } },
+      })
+      console.log('[history API] userStats groupBy OK, rows:', userStats.length)
+    } catch (gbErr: any) {
+      console.error('[history API] userStats groupBy FAILED:', gbErr?.message, gbErr?.stack)
+      // Non-fatal: continue with empty stats
+    }
 
     const userIds = userStats.map((s: any) => s.recordedById)
     const users = userIds.length > 0
@@ -144,6 +161,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       orderBy: { position: 'asc' }
     })
 
+    console.log('[history API] all queries done, returning response')
     return res.json({
       events,
       total,
