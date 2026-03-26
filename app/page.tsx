@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import IconDisplay from '@/components/IconDisplay'
 import LanguageToggle from '@/components/LanguageToggle'
 import WhatsNewModal from '@/components/WhatsNewModal'
+import WelcomeModal from '@/components/WelcomeModal'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import { compressImage } from '@/lib/compressImage'
@@ -68,6 +69,7 @@ export default function HomePage() {
   const [householdMembers, setHouseholdMembers] = useState<FamilyMember[]>([])
   const [proxyUserId, setProxyUserId] = useState<string | null>(null)
   const [showWhatsNew, setShowWhatsNew] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -350,6 +352,23 @@ export default function HomePage() {
                   <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: '700', marginTop: '2px' }}>{t(lang, 'ptsToday')}</div>
                 </div>
                 <LanguageToggle />
+                <button
+                  onClick={() => setShowWelcome(true)}
+                  title="Help / Welcome"
+                  style={{
+                    padding: '10px 14px',
+                    background: 'rgba(255,255,255,0.2)',
+                    border: '2px solid rgba(255,255,255,0.4)',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: 'clamp(12px, 3vw, 14px)',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  ❓
+                </button>
                 <button
                   onClick={() => setShowWhatsNew(true)}
                   style={{
@@ -1128,6 +1147,9 @@ export default function HomePage() {
           setShowWhatsNew(false)
         }} />
       )}
+
+      {/* ─── Welcome / Help Modal ─── */}
+      {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   )
 }
