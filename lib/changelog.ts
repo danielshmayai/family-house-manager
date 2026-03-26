@@ -14,13 +14,21 @@ export type ChangelogVersion = {
 
 export const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.3.0',
+    date: '2026-03-27',
+    changes: [
+      { type: 'new',      en: 'Welcome guide — tap ❓ on the home screen for a step-by-step walkthrough of the app', he: 'מדריך ברוך הבא — הקישו על ❓ במסך הבית לסיור שלב-אחר-שלב באפליקציה' },
+      { type: 'fix',      en: 'Categories and activities with a custom photo now show correctly in all dropdowns', he: 'קטגוריות ופעילויות עם תמונה מותאמת מוצגות כעת נכון בכל התפריטים' },
+      { type: 'fix',      en: 'Custom photos on categories now display properly in the history and task views',    he: 'תמונות מותאמות על קטגוריות מוצגות כעת כראוי בהיסטוריה ובמשימות' },
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-03-20',
     changes: [
-      { type: 'new',      en: 'Tasks system — assign and track tasks between family members', he: 'מערכת משימות — הקצאה ומעקב אחר משימות בין בני המשפחה' },
-      { type: 'new',      en: '"What\'s New" — you\'re looking at it!',                       he: '"מה חדש" — אתם צופים בזה עכשיו!' },
-      { type: 'improved', en: 'Faster activity loading on the home screen',                   he: 'טעינה מהירה יותר של פעילויות במסך הבית' },
-      { type: 'fix',      en: 'Fixed migration issue that could block deployments',            he: 'תיקון בעיית מיגרציה שיכלה לחסום עדכונים' },
+      { type: 'new',      en: 'Tasks — you can now assign chores and activities to family members and track who did what', he: 'משימות — ניתן כעת להקצות מטלות ופעילויות לבני המשפחה ולעקוב אחריהן' },
+      { type: 'new',      en: 'What\'s New — stay up to date with the latest improvements',   he: '"מה חדש" — הישארו מעודכנים בשיפורים האחרונים' },
+      { type: 'improved', en: 'Activities load faster when you open the home screen',          he: 'הפעילויות נטענות מהר יותר בפתיחת מסך הבית' },
     ],
   },
   {
