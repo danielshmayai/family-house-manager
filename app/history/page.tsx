@@ -69,18 +69,18 @@ function getDateRange(preset: string): { startDate: string; endDate: string } {
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })
 }
 
 function formatDate(iso: string, lang: string) {
   return new Date(iso).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
-    weekday: 'short', day: 'numeric', month: 'short',
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Jerusalem',
   })
 }
 
 function formatFullDate(iso: string, lang: string) {
   return new Date(iso).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jerusalem',
   })
 }
 

@@ -704,7 +704,7 @@ export default function HomePage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: '700', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.activity?.name || t(lang, 'activityCompleted')}</div>
                           <div style={{ fontSize: '11px', color: '#9CA3AF' }}>
-                            {new Date(event.occurredAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(event.occurredAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}
                           </div>
                         </div>
                         <div style={{ fontWeight: '800', color: '#10B981', fontSize: '14px', flexShrink: 0 }}>+{event.points} ⭐</div>
