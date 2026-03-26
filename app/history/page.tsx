@@ -424,7 +424,7 @@ export default function HistoryPage() {
                                 <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '1px' }}>
                                   {ev.recordedBy.name || ev.recordedBy.email} · {formatTime(ev.occurredAt)}
                                   {ev.activity?.category && (
-                                    <> · {ev.activity.category.icon || '📁'} {ev.activity.category.name}</>
+                                    <> · <IconDisplay icon={ev.activity.category.icon || '📁'} size={13} style={{ verticalAlign: 'middle' }} /> {ev.activity.category.name}</>
                                   )}
                                 </div>
                               </div>
@@ -552,8 +552,8 @@ export default function HistoryPage() {
                       <div style={{ fontSize: 'clamp(14px, 3.5vw, 16px)', fontWeight: '800', color: '#1F2937' }}>
                         {ta.activity?.name || '?'}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px' }}>
-                        {ta.activity?.category?.icon} {ta.activity?.category?.name}
+                      <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {ta.activity?.category?.icon && <IconDisplay icon={ta.activity.category.icon} size={13} />} {ta.activity?.category?.name}
                       </div>
                     </div>
 
