@@ -5,12 +5,25 @@ import { createPrismaMock } from '../helpers/prisma-mock'
 let prismaMock: ReturnType<typeof createPrismaMock>
 
 vi.mock('@/lib/prisma', () => ({ default: {} }))
+vi.mock('@/lib/apiAuth', () => ({
+  getSessionUser: vi.fn(),
+  verifyHouseholdAccess: vi.fn(),
+  isManager: (role: string) => role === 'ADMIN' || role === 'MANAGER',
+}))
+
+import { getSessionUser, verifyHouseholdAccess } from '@/lib/apiAuth'
+const mockGetSessionUser = getSessionUser as ReturnType<typeof vi.fn>
+const mockVerifyHouseholdAccess = verifyHouseholdAccess as ReturnType<typeof vi.fn>
 
 beforeEach(async () => {
   prismaMock = createPrismaMock()
   const prismaModule = await import('@/lib/prisma')
   Object.assign(prismaModule.default, prismaMock)
   vi.clearAllMocks()
+  // Default: no session (unauthenticated)
+  mockGetSessionUser.mockResolvedValue(null)
+  // Default: household access granted
+  mockVerifyHouseholdAccess.mockResolvedValue(true)
 })
 
 async function callHandler(method: string, opts: { query?: any; body?: any } = {}) {
@@ -122,19 +135,28 @@ describe('GET /api/events', () => {
 
 describe('DELETE /api/events', () => {
   it('requires id', async () => {
+    mockGetSessionUser.mockResolvedValue(mockUser)
     const { status, data } = await callHandler('DELETE', { query: {} })
     expect(status).toBe(400)
     expect(data.error).toMatch(/id is required/i)
   })
 
+  it('returns 401 when unauthenticated', async () => {
+    mockGetSessionUser.mockResolvedValue(null)
+    const { status } = await callHandler('DELETE', { query: { id: 'ev-bad' } })
+    expect(status).toBe(401)
+  })
+
   it('returns 404 for non-existent event', async () => {
+    mockGetSessionUser.mockResolvedValue(mockUser)
     prismaMock.event.findUnique.mockResolvedValue(null)
     const { status } = await callHandler('DELETE', { query: { id: 'ev-bad' } })
     expect(status).toBe(404)
   })
 
-  it('deletes event and returns reverted info', async () => {
-    const mockEvent = { id: 'ev1', eventType: 'TASK_COMPLETED', points: 20, activity: { id: 'act1', name: 'Cook dinner', icon: '🍳', defaultPoints: 20 }, recordedBy: { id: 'u1', name: 'Alice' } }
+  it('deletes own event as MEMBER and returns reverted info', async () => {
+    mockGetSessionUser.mockResolvedValue(mockUser)
+    const mockEvent = { id: 'ev1', eventType: 'TASK_COMPLETED', points: 20, householdId: 'hh1', recordedById: 'u1', activity: { id: 'act1', name: 'Cook dinner', icon: '🍳', defaultPoints: 20 }, recordedBy: { id: 'u1', name: 'Alice' } }
     prismaMock.event.findUnique.mockResolvedValue(mockEvent)
     prismaMock.event.delete.mockResolvedValue({})
 
@@ -143,6 +165,39 @@ describe('DELETE /api/events', () => {
     expect(data.success).toBe(true)
     expect(data.reverted.pointsReverted).toBe(20)
     expect(data.reverted.activityName).toBe('Cook dinner')
+  })
+
+  it('allows ADMIN to delete another member\'s event', async () => {
+    const adminUser = { ...mockUser, id: 'u2', role: 'ADMIN' }
+    mockGetSessionUser.mockResolvedValue(adminUser)
+    const mockEvent = { id: 'ev1', eventType: 'TASK_COMPLETED', points: 10, householdId: 'hh1', recordedById: 'u1', activity: null, recordedBy: { id: 'u1', name: 'Alice' } }
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent)
+    prismaMock.event.delete.mockResolvedValue({})
+
+    const { status, data } = await callHandler('DELETE', { query: { id: 'ev1' } })
+    expect(status).toBe(200)
+    expect(data.success).toBe(true)
+  })
+
+  it('returns 403 when MEMBER tries to delete another member\'s event', async () => {
+    mockGetSessionUser.mockResolvedValue(mockUser)
+    const mockEvent = { id: 'ev2', eventType: 'TASK_COMPLETED', points: 10, householdId: 'hh1', recordedById: 'u2', activity: null, recordedBy: { id: 'u2', name: 'Bob' } }
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent)
+
+    const { status, data } = await callHandler('DELETE', { query: { id: 'ev2' } })
+    expect(status).toBe(403)
+    expect(data.error).toMatch(/only undo your own/i)
+  })
+
+  it('returns 403 when user tries to delete event from different household', async () => {
+    mockGetSessionUser.mockResolvedValue(mockUser)
+    mockVerifyHouseholdAccess.mockResolvedValue(false)
+    const mockEvent = { id: 'ev3', eventType: 'TASK_COMPLETED', points: 10, householdId: 'hh2', recordedById: 'u1', activity: null, recordedBy: { id: 'u1', name: 'Alice' } }
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent)
+
+    const { status, data } = await callHandler('DELETE', { query: { id: 'ev3' } })
+    expect(status).toBe(403)
+    expect(data.error).toMatch(/do not have access/i)
   })
 })
 
