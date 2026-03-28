@@ -25,10 +25,6 @@ export async function POST(req: NextRequest) {
     data: { email, code, expiresAt },
   })
 
-  // In production: send email with the code
-  // For development, we log it to console
-  console.log(`[OTP] Code for ${email}: ${code}`)
-
   return NextResponse.json({ success: true, message: 'OTP sent' })
 }
 

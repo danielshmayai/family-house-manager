@@ -26,6 +26,7 @@ model User {
   otpEnabled      Boolean             @default(false)
   language        String              @default("he")
   theme           String              @default("light")
+  avatarUrl       String?
   // My Tasks
   tasksAssigned   UserTask[]          @relation("TasksAssignedBy")
   tasksReceived   UserTask[]          @relation("TasksAssignedTo")

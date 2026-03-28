@@ -15,18 +15,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { startDate, endDate, userId, activityId, categoryId, limit: lim, offset: off } = req.query
 
-    console.log('[history API] query params:', { startDate, endDate, userId, activityId, categoryId, lim, off })
-
     // groupBy doesn't support relation filters — resolve activityIds for the category upfront
     let categoryActivityIds: string[] | undefined
     if (categoryId && !activityId) {
-      console.log('[history API] resolving activityIds for categoryId:', categoryId)
       const catActivities = await prisma.activity.findMany({
         where: { categoryId: String(categoryId) },
         select: { id: true }
       })
       categoryActivityIds = catActivities.map((a: { id: string }) => a.id)
-      console.log('[history API] categoryActivityIds:', categoryActivityIds)
     }
 
     const where: any = { householdId }
@@ -40,8 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const take = Math.min(Number(lim) || 200, 500)
     const skip = Number(off) || 0
 
-    console.log('[history API] main where:', JSON.stringify(where))
-    console.log('[history API] calling findMany + count...')
     const [events, total] = await Promise.all([
       prisma.event.findMany({
         where,
@@ -67,12 +61,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (userId) statsWhere.recordedById = String(userId)
     if (categoryActivityIds) statsWhere.activityId = { in: categoryActivityIds }
 
-    console.log('[history API] statsWhere before groupBy:', JSON.stringify(statsWhere))
     const groupByWhere = categoryActivityIds
       ? { ...statsWhere, activityId: { in: categoryActivityIds } }
       : { ...statsWhere, activityId: { not: null } }
-    console.log('[history API] groupByWhere:', JSON.stringify(groupByWhere))
-    console.log('[history API] calling activityStats groupBy...')
+
     let activityStats: any[] = []
     try {
       activityStats = await prisma.event.groupBy({
@@ -83,7 +75,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         orderBy: { _count: { id: 'desc' } },
         take: 20,
       })
-      console.log('[history API] activityStats groupBy OK, rows:', activityStats.length)
     } catch (gbErr: any) {
       console.error('[history API] activityStats groupBy FAILED:', gbErr?.message, gbErr?.stack)
       // Non-fatal: continue with empty stats
@@ -109,7 +100,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }))
 
     // Per-user stats
-    console.log('[history API] calling userStats groupBy...')
     let userStats: any[] = []
     try {
       userStats = await prisma.event.groupBy({
@@ -119,7 +109,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         _sum: { points: true },
         orderBy: { _sum: { points: 'desc' } },
       })
-      console.log('[history API] userStats groupBy OK, rows:', userStats.length)
     } catch (gbErr: any) {
       console.error('[history API] userStats groupBy FAILED:', gbErr?.message, gbErr?.stack)
       // Non-fatal: continue with empty stats
@@ -148,20 +137,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     // Categories (for filter dropdowns)
-    console.log('[history API] fetching categories for householdId:', householdId)
     const categories = await prisma.category.findMany({
       where: { householdId },
       select: { id: true, name: true, icon: true, color: true },
       orderBy: { position: 'asc' }
     })
-    console.log('[history API] categories found:', categories.length, categories.map((c: any) => ({ id: c.id, name: c.name })))
-
-    // Debug: also count ALL categories in DB and those with null householdId
-    const [totalCatsInDb, nullHouseholdCats] = await Promise.all([
-      prisma.category.count({}),
-      prisma.category.count({ where: { householdId: null } }),
-    ])
-    console.log('[history API] DEBUG — total categories in DB:', totalCatsInDb, '| householdId=null:', nullHouseholdCats)
 
     // Activities for the given category (for filter dropdown)
     const allActivities = await prisma.activity.findMany({
@@ -169,9 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       select: { id: true, name: true, icon: true, categoryId: true },
       orderBy: { position: 'asc' }
     })
-    console.log('[history API] activities found:', allActivities.length)
 
-    console.log('[history API] all queries done, returning response')
     return res.json({
       events,
       total,
