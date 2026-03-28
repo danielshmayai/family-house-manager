@@ -14,6 +14,16 @@ export type ChangelogVersion = {
 
 export const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '1.4.0',
+    date: '2026-03-28',
+    changes: [
+      { type: 'new',      en: 'Wallet — each member has a personal wallet; earn points and convert them to ₪ with a coin animation', he: 'ארנק — לכל חבר ארנק אישי; צברו נקודות והמירו אותן לשקלים עם אנימציית מטבעות' },
+      { type: 'new',      en: 'Managers can credit or debit any member\'s wallet balance directly', he: 'מנהלים יכולים להוסיף או להפחית יתרה מהארנק של כל חבר' },
+      { type: 'new',      en: 'Custom task points — managers can set a point reward on any task not linked to an activity', he: 'נקודות מותאמות למשימה — מנהלים יכולים לקבוע כמות נקודות לכל משימה שאינה קשורה לפעילות' },
+      { type: 'improved', en: 'Bottom navigation is now always visible on every page with an active-page indicator', he: 'תפריט הניווט התחתון מוצג כעת תמיד בכל הדפים עם סימון הדף הפעיל' },
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-03-27',
     changes: [

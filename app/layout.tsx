@@ -1,6 +1,7 @@
 import './globals.css'
 import React from 'react'
 import Providers from '../components/Providers'
+import BottomNav from '../components/BottomNav'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../lib/auth'
 import { cookies } from 'next/headers'
@@ -64,7 +65,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body style={{ margin: 0, padding: 0, overflowX: 'hidden' }} suppressHydrationWarning>
         <Providers session={session} defaultLang={lang}>
-          <main style={{ minHeight: '100vh', padding: 0 }}>{children}</main>
+          <main style={{ minHeight: '100vh', padding: 0, paddingBottom: '72px' }}>{children}</main>
+          <BottomNav />
         </Providers>
       </body>
     </html>

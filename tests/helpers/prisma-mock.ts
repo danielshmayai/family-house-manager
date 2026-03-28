@@ -15,6 +15,7 @@ export function createPrismaMock() {
       findUnique: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
     invite: {
       findUnique: vi.fn(),
@@ -43,6 +44,7 @@ export function createPrismaMock() {
       create: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
+      aggregate: vi.fn(),
     },
     task: {
       findUnique: vi.fn(),
@@ -81,6 +83,15 @@ export function createPrismaMock() {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+    },
+    wallet: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+    },
+    walletTransaction: {
+      create: vi.fn(),
+      aggregate: vi.fn(),
     },
   }
 }

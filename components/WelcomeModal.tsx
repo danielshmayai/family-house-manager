@@ -46,13 +46,21 @@ const STEPS: Step[] = [
     descEn: 'Points accumulate in real time. Check the Leaderboard to see who\'s on top — daily, weekly, or all-time. A little healthy competition never hurts!',
     descHe: 'הנקודות מצטברות בזמן אמת. בדקו את הדירוג כדי לראות מי מוביל — יומי, שבועי, או כל הזמנים. קצת תחרות בריאה אף פעם לא הזיקה!',
   },
+  {
+    emoji: '💰',
+    titleEn: 'Turn Points into Money',
+    titleHe: 'הפכו נקודות לכסף',
+    descEn: 'Every member has a personal wallet. Once the manager sets a points-to-₪ rate, you can convert your earned points into real balance — with a satisfying coin animation!',
+    descHe: 'לכל חבר ארנק אישי. ברגע שהמנהל קובע שער המרה, ניתן להמיר נקודות שנצברו ליתרה אמיתית — עם אנימציית מטבעות מספקת!',
+  },
 ]
 
 const FEATURES = [
   { emoji: '📊', en: 'Full activity history', he: 'היסטוריית פעילות מלאה' },
+  { emoji: '💰', en: 'Personal wallet — convert points to ₪', he: 'ארנק אישי — המרת נקודות לשקלים' },
+  { emoji: '⭐', en: 'Custom point rewards on tasks', he: 'נקודות מותאמות אישית למשימות' },
   { emoji: '🌐', en: 'English & Hebrew', he: 'אנגלית ועברית' },
   { emoji: '🖼️', en: 'Custom icons & gallery images', he: 'אייקונים ותמונות מותאמות' },
-  { emoji: '🔔', en: 'Task notifications', he: 'התראות למשימות' },
 ]
 
 type Props = {

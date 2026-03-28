@@ -888,43 +888,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ─── Bottom Navigation (only when signed in) ─── */}
-      {status === 'authenticated' && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'white', borderTop: '1px solid #E5E7EB',
-          padding: 'clamp(8px, 2vw, 10px) 0',
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.08)', zIndex: 100
-        }}>
-          <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-            {[
-              { path: '/', icon: '🏠', labelKey: 'navHome' as const },
-              { path: '/my-tasks', icon: '✅', labelKey: 'navMyTasks' as const },
-              { path: '/history', icon: '📜', labelKey: 'navHistory' as const },
-              { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
-              { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
-              ...(isManager ? [{ path: '/admin', icon: '⚙️', labelKey: 'navManage' as const }] : []),
-              ...(sessionUser?.email === (process.env.NEXT_PUBLIC_PRODUCT_ADMIN_EMAIL || 'danielshmayai@gmail.com')
-                ? [{ path: '/product-admin', icon: '🛡️', labelKey: 'navHome' as const, label: 'ניהול' }]
-                : [])
-            ].map(item => (
-              <button key={item.path} onClick={() => router.push(item.path)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-                  padding: '6px clamp(8px, 2vw, 16px)', minHeight: '48px', minWidth: '52px',
-                  color: '#9CA3AF', fontWeight: '600',
-                  fontSize: 'clamp(10px, 2.5vw, 12px)',
-                  WebkitTapHighlightColor: 'transparent'
-                }}>
-                <span style={{ fontSize: 'clamp(20px, 5vw, 24px)' }}>{item.icon}</span>
-                {(item as any).label || t(lang, item.labelKey)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ─── View Details Modal ─── */}
       {viewModal && (
         <div style={{

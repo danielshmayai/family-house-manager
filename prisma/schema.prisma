@@ -30,19 +30,21 @@ model User {
   // My Tasks
   tasksAssigned   UserTask[]          @relation("TasksAssignedBy")
   tasksReceived   UserTask[]          @relation("TasksAssignedTo")
+  wallet          Wallet?
 }
 
 model Household {
-  id         String     @id @default(cuid())
-  name       String
-  createdAt  DateTime   @default(now())
+  id              String     @id @default(cuid())
+  name            String
+  createdAt       DateTime   @default(now())
   // Token for product-admin to revoke this household
-  revokeToken String?   @unique
-  categories Category[]
-  events     Event[]
-  invites    Invite[]
-  members    User[]
-  userTasks  UserTask[]
+  revokeToken     String?    @unique
+  pointToNisRate  Float      @default(0.01)
+  categories      Category[]
+  events          Event[]
+  invites         Invite[]
+  members         User[]
+  userTasks       UserTask[]
 }
 
 model Invite {
@@ -127,6 +129,7 @@ model UserTask {
   title        String
   description  String?
   activityId   String?
+  points       Int?
   assignedById String
   assignedToId String
   householdId  String
@@ -159,4 +162,26 @@ model OtpCode {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id           String              @id @default(cuid())
+  userId       String              @unique
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Float               @default(0)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amount      Float
+  type        String   // CREDIT | DEBIT | POINTS_CONVERSION
+  description String?
+  pointsUsed  Int?
+  createdById String
+  createdAt   DateTime @default(now())
 }

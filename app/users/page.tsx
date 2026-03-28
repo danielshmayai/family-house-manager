@@ -214,26 +214,6 @@ export default function UsersPage(){
     }}>
       <div style={{ marginBottom: 'clamp(16px, 4vw, 32px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => router.back()}
-            style={{
-              padding: '10px 16px',
-              background: '#F3F4F6',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: 'clamp(13px, 3.5vw, 14px)',
-              fontWeight: '600',
-              cursor: 'pointer',
-              color: '#374151',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              minHeight: '40px',
-              WebkitTapHighlightColor: 'transparent'
-            }}
-          >
-            {t(lang, 'back')}
-          </button>
           <LanguageToggle />
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {isManager && (

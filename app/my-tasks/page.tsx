@@ -19,6 +19,7 @@ type UserTask = {
   description?: string
   activityId?: string | null
   activity?: { id: string; name: string; icon?: string | null; defaultPoints: number } | null
+  points?: number | null
   assignedById: string
   assignedToId: string
   isCompleted: boolean
@@ -75,6 +76,7 @@ export default function MyTasksPage() {
   const [assignTo, setAssignTo] = useState<string>('')
   const [selectedActivityId, setSelectedActivityId] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [newPoints, setNewPoints] = useState<string>('')
   const [saving, setSaving] = useState(false)
 
   // Bonus animation
@@ -175,7 +177,8 @@ export default function MyTasksPage() {
           title: newTitle.trim(),
           description: newDesc.trim() || undefined,
           assignedToId: assignTo || viewedUserId,
-          activityId: selectedActivityId || undefined
+          activityId: selectedActivityId || undefined,
+          points: (!selectedActivityId && newPoints) ? parseInt(newPoints, 10) : undefined
         })
       })
       if (res.ok) {
@@ -186,6 +189,7 @@ export default function MyTasksPage() {
         setNewDesc('')
         setAssignTo('')
         setSelectedActivityId('')
+        setNewPoints('')
       }
     } catch { /* ignore */ }
     finally { setSaving(false) }
@@ -599,6 +603,29 @@ export default function MyTasksPage() {
                   />
                 </div>
 
+                {/* ── Custom points (managers, no activity selected) ── */}
+                {userIsManager && !selectedActivityId && (assignTo !== userId || assignTo === '') && (
+                  <div style={{ marginBottom: '14px' }}>
+                    <label htmlFor="task-points-input" style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                      ⭐ {lang === 'he' ? 'נקודות למשימה (אופציונלי)' : 'Task Points (optional)'}
+                    </label>
+                    <input
+                      id="task-points-input"
+                      type="number"
+                      min={0}
+                      max={10000}
+                      value={newPoints}
+                      onChange={e => setNewPoints(e.target.value)}
+                      placeholder="0"
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: '12px',
+                        border: '2px solid #fde68a', fontSize: '15px', outline: 'none',
+                        boxSizing: 'border-box', fontFamily: 'inherit', background: '#fffbeb'
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* ── Assign-to (managers) — pill buttons ── */}
                 {userIsManager && members.length > 1 && (
                   <div style={{ marginBottom: '16px' }}>
@@ -809,6 +836,15 @@ function TaskSection({
                         padding: '2px 8px', borderRadius: '999px'
                       }}>
                         {task.activity.icon || '⚡'} {task.activity.name}
+                      </span>
+                    )}
+                    {!task.activity && task.points && task.points > 0 && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: '700',
+                        background: '#FEF3C7', color: '#B45309',
+                        padding: '2px 8px', borderRadius: '999px'
+                      }}>
+                        ⭐ {task.points}
                       </span>
                     )}
                     {task.isCompleted && task.completedAt && (

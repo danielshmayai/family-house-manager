@@ -18,6 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const householdId = sessionUser.householdId
     const { lang } = req.body as { lang?: string }
 
+    // Verify household exists
+    const household = await prisma.household.findUnique({ where: { id: householdId } })
+    if (!household) {
+      return res.status(404).json({ error: 'Household not found. Please sign out and sign in again.' })
+    }
+
     // Delete all existing events, activities, and categories for this household
     // Events first (depends on activities), then activities (depends on categories), then categories
     await prisma.event.deleteMany({ where: { householdId } })

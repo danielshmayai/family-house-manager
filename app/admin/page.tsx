@@ -297,27 +297,7 @@ export default function Admin() {
 
   return (
     <div style={{ padding: 'clamp(12px, 3vw, 24px)', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui' }}>
-      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            padding: '10px 16px',
-            background: '#F3F4F6',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: 'clamp(13px, 3.5vw, 14px)',
-            fontWeight: '600',
-            cursor: 'pointer',
-            color: '#374151',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            minHeight: '40px',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          {t(lang, 'backHome')}
-        </button>
+      <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <LanguageToggle />
       </div>
 

@@ -63,19 +63,7 @@ export default function Leaderboard() {
       padding: 'clamp(12px, 3vw, 24px)', maxWidth: '800px', margin: '0 auto',
       fontFamily: 'system-ui', minHeight: '100vh', paddingBottom: '100px'
     }}>
-      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            padding: '10px 16px', background: '#F3F4F6', border: 'none',
-            borderRadius: '10px', fontSize: '14px', fontWeight: '600',
-            cursor: 'pointer', color: '#374151', display: 'flex',
-            alignItems: 'center', gap: '6px', minHeight: '40px',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          {t(lang, 'backHome')}
-        </button>
+      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
         <LanguageToggle style={{ background: '#667eea', border: '2px solid #764ba2' }} />
       </div>
 

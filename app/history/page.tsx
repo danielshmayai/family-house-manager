@@ -209,7 +209,7 @@ export default function HistoryPage() {
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: 'clamp(16px, 4vw, 24px)' }}>
 
         {/* ── Header ── */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <div style={{ marginBottom: '20px', textAlign: 'center' }}>
           <h1 style={{ fontSize: 'clamp(24px, 6vw, 32px)', fontWeight: '900', color: '#1F2937', margin: '0 0 4px' }}>
             📜 {isHe ? 'היסטוריית פעילויות' : 'Activity History'}
           </h1>
@@ -659,8 +659,6 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* ── Bottom Navigation ── */}
-      <BottomNav router={router} lang={lang} sessionUser={sessionUser} />
     </div>
   )
 }
@@ -674,42 +672,6 @@ function InfoPill({ icon, label, value }: { icon: string; label: string; value: 
   )
 }
 
-function BottomNav({ router, lang, sessionUser }: { router: any; lang: string; sessionUser: any }) {
-  const isManager = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
-  const isHe = lang === 'he'
-  return (
-    <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      background: 'white', borderTop: '1px solid #E5E7EB',
-      padding: 'clamp(8px, 2vw, 10px) 0',
-      boxShadow: '0 -4px 16px rgba(0,0,0,0.08)', zIndex: 100,
-    }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-        {[
-          { path: '/', icon: '🏠', label: t(lang as any, 'navHome') },
-          { path: '/history', icon: '📜', label: isHe ? 'היסטוריה' : 'History' },
-          { path: '/leaderboard', icon: '🏆', label: t(lang as any, 'navRankings') },
-          { path: '/users', icon: '👥', label: t(lang as any, 'navFamily') },
-          ...(isManager ? [{ path: '/admin', icon: '⚙️', label: t(lang as any, 'navManage') }] : []),
-        ].map(item => (
-          <button key={item.path} onClick={() => router.push(item.path)}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
-              padding: '6px clamp(8px, 2vw, 16px)', minHeight: '48px', minWidth: '48px',
-              color: item.path === '/history' ? '#667eea' : '#9CA3AF',
-              fontWeight: item.path === '/history' ? '800' : '600',
-              fontSize: 'clamp(10px, 2.5vw, 12px)',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <span style={{ fontSize: 'clamp(20px, 5vw, 24px)' }}>{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 const selectStyle: React.CSSProperties = {
   padding: '10px 12px',
