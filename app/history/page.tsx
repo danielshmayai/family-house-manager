@@ -124,8 +124,40 @@ export default function HistoryPage() {
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [detailModal, setDetailModal] = useState<EventItem | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [reverting, setReverting] = useState<string | null>(null)
 
   const sessionUser = session?.user as any
+  const isManagerOrAdmin = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
+
+  function canCancelEvent(ev: EventItem): boolean {
+    if (!sessionUser) return false
+    if (isManagerOrAdmin) return true
+    return ev.recordedBy.id === sessionUser.id
+  }
+
+  async function cancelEvent(ev: EventItem, e?: React.MouseEvent) {
+    e?.stopPropagation()
+    const activityName = ev.activity?.name || ev.eventType
+    const confirmMsg = isHe
+      ? `לבטל את "${activityName}"?\n\nזה יסיר ${ev.points} נקודות ויסמן כלא בוצע.`
+      : `Undo "${activityName}"?\n\nThis will remove ${ev.points} points and mark it as not done.`
+    if (!confirm(confirmMsg)) return
+
+    setReverting(ev.id)
+    try {
+      const res = await fetch(`/api/events?id=${ev.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to cancel')
+      }
+      setDetailModal(null)
+      await fetchHistory()
+    } catch (err: any) {
+      alert((isHe ? 'שגיאה: ' : 'Error: ') + err.message)
+    } finally {
+      setReverting(null)
+    }
+  }
 
   const fetchHistory = useCallback(async () => {
     if (!sessionUser?.householdId) return
@@ -448,6 +480,24 @@ export default function HistoryPage() {
                                   ) : null
                                 } catch { return null }
                               })()}
+
+                              {/* Cancel button */}
+                              {canCancelEvent(ev) && (
+                                <button
+                                  onClick={e => cancelEvent(ev, e)}
+                                  disabled={reverting === ev.id}
+                                  title={isHe ? 'בטל פעילות' : 'Cancel activity'}
+                                  style={{
+                                    flexShrink: 0, background: 'none', border: '1px solid #FCA5A5',
+                                    borderRadius: '8px', color: '#EF4444', fontSize: '11px',
+                                    fontWeight: '700', padding: '3px 8px', cursor: reverting === ev.id ? 'not-allowed' : 'pointer',
+                                    opacity: reverting === ev.id ? 0.5 : 1,
+                                    WebkitTapHighlightColor: 'transparent',
+                                  }}
+                                >
+                                  {reverting === ev.id ? '⏳' : (isHe ? 'ביטול' : 'Undo')}
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
