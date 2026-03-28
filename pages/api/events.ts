@@ -180,6 +180,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse){
 
       const eventId = String(id)
 
+      // Auth check: require session
+      const sessionUser = await getSessionUser(req, res)
+      if (!sessionUser) return res.status(401).json({ error: 'Unauthorized' })
+
       const event = await prisma.event.findUnique({
         where: { id: eventId },
         include: {
@@ -192,9 +196,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse){
         return res.status(404).json({ error: 'Event not found' })
       }
 
-      // Permission check: only the user who recorded or a manager can delete
-      const sessionUser = await getSessionUser(req, res)
-      if (sessionUser && sessionUser.id !== event.recordedById) {
+      // Verify session user belongs to the same household as the event
+      if (event.householdId) {
+        const hasAccess = await verifyHouseholdAccess(sessionUser.id, event.householdId)
+        if (!hasAccess) {
+          return res.status(403).json({ error: 'You do not have access to this household' })
+        }
+      }
+
+      // Permission check: only the user who recorded or a manager/admin can delete
+      if (sessionUser.id !== event.recordedById) {
         if (sessionUser.role !== 'ADMIN' && sessionUser.role !== 'MANAGER') {
           return res.status(403).json({ error: 'You can only undo your own events' })
         }

@@ -704,6 +704,24 @@ export default function HistoryPage() {
                   )
                 } catch { return null }
               })()}
+
+              {canCancelEvent(detailModal) && (
+                <button
+                  onClick={() => cancelEvent(detailModal)}
+                  disabled={reverting === detailModal.id}
+                  style={{
+                    width: '100%', padding: '12px',
+                    background: reverting === detailModal.id ? '#F3F4F6' : '#FEF2F2',
+                    border: '2px solid #FCA5A5', borderRadius: '12px',
+                    color: '#EF4444', fontSize: '14px', fontWeight: '700',
+                    cursor: reverting === detailModal.id ? 'not-allowed' : 'pointer',
+                    opacity: reverting === detailModal.id ? 0.6 : 1,
+                    marginTop: '4px',
+                  }}
+                >
+                  {reverting === detailModal.id ? '⏳' : (isHe ? 'ביטול פעילות' : 'Undo Activity')}
+                </button>
+              )}
             </div>
           </div>
         </div>
