@@ -20,3 +20,6 @@ next-env.d.ts
 # Local restart scripts (ignored because they may contain machine-specific commands)
 /scripts/restart.sh
 /scripts/restart.bat
+
+# Playwright test output
+test-results/

@@ -82,8 +82,8 @@ async function request(path, options = {}) {
 async function runTests() {
   console.log('\n🧪 Running API Integration Tests...\n')
   
-  // 1. Test user registration
-  await test('POST /api/auth/register - Create new user', async () => {
+  // 1. Test user registration (family head — goes pending, no invite code)
+  await test('POST /api/auth/register - Create new family head (pending approval)', async () => {
     const timestamp = Date.now()
     const { data, status, ok } = await request('/api/auth/register', {
       method: 'POST',
@@ -93,24 +93,23 @@ async function runTests() {
         name: `Test User ${timestamp}`
       })
     })
-    
+
     assert(ok, `Expected 200, got ${status}`)
-    assert(data.id, 'Response should include user id')
-    assert(data.email, 'Response should include email')
-    testUserId = data.id
+    assert(data.pending === true, 'Family head registration should return { pending: true }')
   })
-  
-  // 2. Test duplicate user registration
-  await test('POST /api/auth/register - Reject duplicate email', async () => {
+
+  // 2. Test duplicate user registration (register same email twice)
+  await test('POST /api/auth/register - Reject already-pending email', async () => {
+    const email = `dup${Date.now()}@example.com`
+    await request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password: 'test123456', name: 'First' })
+    })
     const { data, status } = await request('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({
-        email: 'admin@demo.com',
-        password: 'test123',
-        name: 'Duplicate'
-      })
+      body: JSON.stringify({ email, password: 'test123456', name: 'Duplicate' })
     })
-    
+
     assert(status === 400, `Expected 400, got ${status}`)
     assert(data.error, 'Should return error message')
   })
@@ -125,17 +124,10 @@ async function runTests() {
     assert(data[0].email, 'User should have email')
   })
   
-  // 4. Test getting tasks
-  await test('GET /api/tasks - List all tasks', async () => {
-    const { data, ok } = await request('/api/tasks')
-    
-    assert(ok, 'Request should succeed')
-    const tasks = Array.isArray(data) ? data : data.tasks
-    assert(Array.isArray(tasks), 'Response should contain tasks array')
-    if (tasks.length > 0) {
-      assert(tasks[0].name, 'Task should have name')
-      assert(tasks[0].category, 'Task should include category')
-    }
+  // 4. Test my-tasks endpoint exists (requires auth — expect 401, not 404)
+  await test('GET /api/my-tasks - Endpoint exists (returns 401 without auth)', async () => {
+    const { status } = await request('/api/my-tasks')
+    assert(status === 401, `Expected 401 (auth required), got ${status}`)
   })
   
   // 5. Test getting categories
