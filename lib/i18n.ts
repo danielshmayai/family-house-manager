@@ -349,7 +349,7 @@ const t_map = {
     ptsToday: '⭐ נקודות היום',
     featureEarnTitle: 'צבור נקודות',
     featureEarnDesc: 'השלם פעילויות משפחתיות וצבור נקודות יומיות',
-    featureCompeteTitle: 'תתחרו וגנחו',
+    featureCompeteTitle: 'תתחרו ותנצחו',
     featureCompeteDesc: 'ראו מי האלוף המשפחתי בלוח הדירוג החי',
     featureFamilyTitle: 'משפחה ביחד',
     featureFamilyDesc: 'נהלו מטלות, בישול, חיות מחמד ועוד כצוות',
