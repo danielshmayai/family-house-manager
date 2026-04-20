@@ -7,6 +7,8 @@ node_modules/
 .env.production
 dist/
 coverage/
+test-results/
+playwright-report/
 server.log
 server_ui.log
 tsconfig.tsbuildinfo

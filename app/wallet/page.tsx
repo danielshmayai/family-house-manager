@@ -102,8 +102,10 @@ export default function WalletPage() {
   const [adjustDesc, setAdjustDesc] = useState('')
   const [adjusting, setAdjusting] = useState(false)
 
-  // Manager: set rate
+  // Manager: set rate + min points
   const [newRate, setNewRate] = useState('')
+  const [minPoints, setMinPoints] = useState(300)
+  const [newMinPoints, setNewMinPoints] = useState('300')
   const [savingRate, setSavingRate] = useState(false)
 
   // Coin animation
@@ -133,6 +135,8 @@ export default function WalletPage() {
         const r = await rateRes.json()
         setRate(r.pointToNisRate ?? 0)
         setNewRate(String(r.pointToNisRate ?? 0))
+        setMinPoints(r.minPointsConversion ?? 300)
+        setNewMinPoints(String(r.minPointsConversion ?? 300))
       }
       if (allTxRes?.ok) {
         const allData = await allTxRes.json()
@@ -227,11 +231,15 @@ export default function WalletPage() {
       const res = await fetch('/api/household/wallet-rate', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pointToNisRate: parseFloat(newRate) })
+        body: JSON.stringify({
+          pointToNisRate: parseFloat(newRate),
+          minPointsConversion: parseInt(newMinPoints, 10),
+        })
       })
       if (res.ok) {
         const data = await res.json()
         setRate(data.pointToNisRate)
+        setMinPoints(data.minPointsConversion ?? 300)
       }
     } finally {
       setSavingRate(false)
@@ -259,6 +267,8 @@ export default function WalletPage() {
 
   const pointsAvailable = wallet?.availablePoints ?? 0
   const maxConvertNis = rate > 0 ? pointsAvailable * rate : 0
+  const enteredPoints = parseInt(convertPoints, 10)
+  const belowMinimum = !!convertPoints && (!enteredPoints || enteredPoints < minPoints)
 
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#fef9c3 0%,#fef3c7 50%,#fde68a 100%)', padding: 'clamp(16px,4vw,32px)', fontFamily: 'system-ui,sans-serif', position: 'relative', overflow: 'hidden' }}>
@@ -341,6 +351,9 @@ export default function WalletPage() {
                 >
                   {t(lang, 'walletPointsAvailable')(pointsAvailable)}
                 </span>
+                <span style={{ background: '#ede9fe', color: '#5b21b6', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600 }}>
+                  {lang === 'he' ? `מינימום: ${minPoints} נק'` : `Min: ${minPoints} pts`}
+                </span>
                 {isManager && (
                   <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600 }}>
                     {t(lang, 'walletRate')(rate)}
@@ -360,22 +373,28 @@ export default function WalletPage() {
                 <div style={{ flex: 1, minWidth: 120 }}>
                   <input
                     type="number"
-                    min={1}
+                    min={minPoints}
                     max={pointsAvailable}
                     value={convertPoints}
                     onChange={e => setConvertPoints(e.target.value)}
-                    placeholder="100"
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #fde68a', fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
+                    placeholder={String(minPoints)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `2px solid ${belowMinimum ? '#fca5a5' : '#fde68a'}`, fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={converting || !convertPoints || parseInt(convertPoints) <= 0}
-                  style={{ padding: '10px 20px', borderRadius: 10, background: converting ? '#d1d5db' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', fontWeight: 700, border: 'none', cursor: converting ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', whiteSpace: 'nowrap' }}
+                  disabled={converting || !convertPoints || belowMinimum || (enteredPoints || 0) <= 0}
+                  style={{ padding: '10px 20px', borderRadius: 10, background: (converting || belowMinimum) ? '#d1d5db' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', fontWeight: 700, border: 'none', cursor: (converting || belowMinimum) ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', whiteSpace: 'nowrap' }}
                 >
                   {converting ? t(lang, 'walletConverting') : t(lang, 'walletConvertBtn')}
                 </button>
               </form>
+
+              {belowMinimum && (
+                <p style={{ marginTop: 8, color: '#dc2626', fontWeight: 600, fontSize: 'clamp(12px,3vw,13px)' }}>
+                  {lang === 'he' ? `נדרש מינימום של ${minPoints} נקודות להמרה` : `Minimum ${minPoints} points required to convert`}
+                </p>
+              )}
 
               {convertMsg && (
                 <p style={{ marginTop: 10, color: convertMsg.includes('!') ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: 'clamp(13px,3.5vw,14px)' }}>
@@ -397,20 +416,41 @@ export default function WalletPage() {
               <p style={{ color: '#6b7280', fontSize: 'clamp(12px,3vw,13px)', margin: '0 0 12px' }}>
                 {t(lang, 'walletRateLabel')(rate)}
               </p>
-              <form onSubmit={handleSaveRate} style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={newRate}
-                  onChange={e => setNewRate(e.target.value)}
-                  placeholder="0.10"
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(14px,4vw,16px)', outline: 'none' }}
-                />
+              <form onSubmit={handleSaveRate} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      {lang === 'he' ? 'שער המרה (₪ לנקודה)' : 'Rate (₪ per point)'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={newRate}
+                      onChange={e => setNewRate(e.target.value)}
+                      placeholder="0.10"
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      {lang === 'he' ? 'מינימום נקודות להמרה' : 'Min points to convert'}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={newMinPoints}
+                      onChange={e => setNewMinPoints(e.target.value)}
+                      placeholder="300"
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
                 <button
                   type="submit"
                   disabled={savingRate}
-                  style={{ padding: '10px 20px', borderRadius: 10, background: savingRate ? '#d1d5db' : '#1f2937', color: '#fff', fontWeight: 700, border: 'none', cursor: savingRate ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', whiteSpace: 'nowrap' }}
+                  style={{ padding: '10px 20px', borderRadius: 10, background: savingRate ? '#d1d5db' : '#1f2937', color: '#fff', fontWeight: 700, border: 'none', cursor: savingRate ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', alignSelf: 'flex-start' }}
                 >
                   {savingRate ? t(lang, 'walletRateSaving') : t(lang, 'walletRateSave')}
                 </button>
