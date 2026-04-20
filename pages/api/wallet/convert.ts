@@ -28,11 +28,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Get household pointToNisRate
   const household = await prisma.household.findUnique({
     where: { id: sessionUser.householdId },
-    select: { pointToNisRate: true }
+    select: { pointToNisRate: true, minPointsConversion: true }
   })
 
   if (!household || household.pointToNisRate <= 0) {
     return res.status(400).json({ error: 'Point conversion rate is not configured' })
+  }
+
+  const minPoints = household.minPointsConversion ?? 300
+  if (parsedPoints < minPoints) {
+    return res.status(400).json({
+      error: `Minimum conversion is ${minPoints} points`,
+      minPointsConversion: minPoints,
+    })
   }
 
   // Calculate total points the user has earned (all time)

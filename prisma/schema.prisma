@@ -39,7 +39,8 @@ model Household {
   createdAt       DateTime   @default(now())
   // Token for product-admin to revoke this household
   revokeToken     String?    @unique
-  pointToNisRate  Float      @default(0.01)
+  pointToNisRate       Float      @default(0.01)
+  minPointsConversion  Int        @default(300)
   categories      Category[]
   events          Event[]
   invites         Invite[]

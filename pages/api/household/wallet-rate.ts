@@ -16,9 +16,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     const household = await prisma.household.findUnique({
       where: { id: sessionUser.householdId },
-      select: { pointToNisRate: true }
+      select: { pointToNisRate: true, minPointsConversion: true }
     })
-    return res.json({ pointToNisRate: household?.pointToNisRate ?? 0 })
+    return res.json({
+      pointToNisRate: household?.pointToNisRate ?? 0,
+      minPointsConversion: household?.minPointsConversion ?? 300,
+    })
   }
 
   // PUT — manager updates the rate
@@ -32,20 +35,34 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const hasAccess = await verifyHouseholdAccess(sessionUser.id, sessionUser.householdId)
     if (!hasAccess) return res.status(403).json({ error: 'Access denied' })
 
-    const { pointToNisRate } = req.body
+    const { pointToNisRate, minPointsConversion } = req.body
     const rate = parseFloat(pointToNisRate)
 
     if (isNaN(rate) || rate < 0) {
       return res.status(400).json({ error: 'pointToNisRate must be a non-negative number' })
     }
 
+    const updateData: any = { pointToNisRate: rate }
+
+    if (minPointsConversion !== undefined) {
+      const minPts = parseInt(minPointsConversion, 10)
+      if (isNaN(minPts) || minPts < 1) {
+        return res.status(400).json({ error: 'minPointsConversion must be a positive integer' })
+      }
+      updateData.minPointsConversion = minPts
+    }
+
     const household = await prisma.household.update({
       where: { id: sessionUser.householdId },
-      data: { pointToNisRate: rate },
-      select: { pointToNisRate: true }
+      data: updateData,
+      select: { pointToNisRate: true, minPointsConversion: true }
     })
 
-    return res.json({ success: true, pointToNisRate: household.pointToNisRate })
+    return res.json({
+      success: true,
+      pointToNisRate: household.pointToNisRate,
+      minPointsConversion: household.minPointsConversion,
+    })
   }
 
   return res.status(405).json({ error: 'Method not allowed' })
