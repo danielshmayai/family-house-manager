@@ -102,6 +102,9 @@ export default function WalletPage() {
   const [adjustDesc, setAdjustDesc] = useState('')
   const [adjusting, setAdjusting] = useState(false)
 
+  // Manager: member transaction drawer
+  const [selectedMember, setSelectedMember] = useState<{ id: string; name: string | null } | null>(null)
+
   // Manager: set rate + min points
   const [newRate, setNewRate] = useState('')
   const [minPoints, setMinPoints] = useState(300)
@@ -559,7 +562,7 @@ export default function WalletPage() {
               {memberWallets.map(mw => (
                 <div
                   key={mw.id}
-                  onClick={() => router.push(`/history?userId=${mw.user.id}`)}
+                  onClick={() => setSelectedMember(mw.user)}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', cursor: 'pointer', transition: 'background 0.15s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
                   onMouseLeave={e => (e.currentTarget.style.background = '#f9fafb')}
@@ -615,6 +618,59 @@ export default function WalletPage() {
           </div>
         )}
       </div>
+
+      {/* Member transaction drawer */}
+      {selectedMember && (() => {
+        const memberTxs = allTransactions.filter(tx => tx.wallet.user.id === selectedMember.id)
+        return (
+          <div
+            onClick={() => setSelectedMember(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 600, margin: '0 auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: 'clamp(20px,5vw,28px)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ margin: 0, fontSize: 'clamp(16px,4.5vw,20px)', fontWeight: 800, color: '#1f2937' }}>
+                  💰 {selectedMember.name || selectedMember.id}
+                </h2>
+                <button
+                  onClick={() => setSelectedMember(null)}
+                  style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 34, height: 34, cursor: 'pointer', fontSize: 18, color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >×</button>
+              </div>
+
+              {/* Transactions list */}
+              <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {memberTxs.length === 0 ? (
+                  <p style={{ color: '#9ca3af', textAlign: 'center', padding: '32px 0', fontSize: 'clamp(13px,3.5vw,15px)' }}>
+                    {isRtl ? 'אין עסקאות עדיין' : 'No transactions yet'}
+                  </p>
+                ) : memberTxs.map(tx => (
+                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 'clamp(12px,3vw,14px)', color: '#1f2937' }}>
+                        {txLabel(tx.type)}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tx.description || '—'}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
+                        {new Date(tx.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
+                      </p>
+                    </div>
+                    <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
+                      {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
