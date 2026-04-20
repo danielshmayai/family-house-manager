@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
@@ -104,6 +104,7 @@ function groupByDay(events: EventItem[], lang: string): { date: string; label: s
 export default function HistoryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { lang } = useLang()
   const isHe = lang === 'he'
 
@@ -117,7 +118,7 @@ export default function HistoryPage() {
   const [activities, setActivities] = useState<ActivityOption[]>([])
 
   const [range, setRange] = useState<string>('month')
-  const [filterUser, setFilterUser] = useState('')
+  const [filterUser, setFilterUser] = useState(() => searchParams?.get('userId') ?? '')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterActivity, setFilterActivity] = useState('')
   const [viewTab, setViewTab] = useState<ViewTab>('timeline')
