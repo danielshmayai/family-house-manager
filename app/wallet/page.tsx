@@ -557,10 +557,19 @@ export default function WalletPage() {
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {memberWallets.map(mw => (
-                <div key={mw.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb' }}>
-                  <span style={{ fontWeight: 600, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>
-                    {mw.user.name || mw.user.id}
-                  </span>
+                <div
+                  key={mw.id}
+                  onClick={() => router.push(`/history?userId=${mw.user.id}`)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '#f9fafb')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 600, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>
+                      {mw.user.name || mw.user.id}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>📜</span>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {mw.availablePoints > 0 && (
                       <span style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#92400e', background: '#fef3c7', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>
