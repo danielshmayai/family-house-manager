@@ -133,17 +133,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const wallet = await prisma.wallet.upsert({
       where: { userId },
-      create: { userId, balance: Math.max(0, delta) },
+      create: { userId, balance: delta },
       update: { balance: { increment: delta } },
     })
-
-    // Prevent negative balance
-    if (wallet.balance < 0) {
-      await prisma.wallet.update({
-        where: { userId },
-        data: { balance: 0 }
-      })
-    }
 
     const finalWallet = await prisma.wallet.findUnique({ where: { userId } })
 

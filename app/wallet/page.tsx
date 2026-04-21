@@ -401,7 +401,7 @@ export default function WalletPage() {
             {t(lang, 'walletBalance')}
           </p>
           <p style={{ color: '#fff', fontSize: 'clamp(40px,10vw,64px)', fontWeight: 900, margin: 0, lineHeight: 1 }}>
-            {t(lang, 'walletCurrency')}{(wallet?.balance ?? 0).toFixed(2)}
+            {(wallet?.balance ?? 0) < 0 ? '-' : ''}{t(lang, 'walletCurrency')}{Math.abs(wallet?.balance ?? 0).toFixed(2)}
           </p>
         </div>
 
@@ -753,8 +753,8 @@ export default function WalletPage() {
                         ⭐ {mw.availablePoints} pts
                       </span>
                     )}
-                    <span style={{ fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', color: mw.balance > 0 ? '#16a34a' : '#6b7280' }}>
-                      ₪{mw.balance.toFixed(2)}
+                    <span style={{ fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', color: mw.balance > 0 ? '#16a34a' : mw.balance < 0 ? '#dc2626' : '#6b7280' }}>
+                      {mw.balance < 0 ? '-' : ''}₪{Math.abs(mw.balance).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -796,6 +796,11 @@ export default function WalletPage() {
       {/* Member transaction drawer */}
       {selectedMember && (() => {
         const memberTxs = allTransactions.filter(tx => tx.wallet.user.id === selectedMember.id)
+        async function cancelTx(txId: string) {
+          await fetch(`/api/wallet/transaction/${txId}`, { method: 'DELETE' })
+          await fetchData()
+          // Refresh drawer list (re-render via fetchData updating allTransactions)
+        }
         return (
           <div
             onClick={() => setSelectedMember(null)}
@@ -835,9 +840,18 @@ export default function WalletPage() {
                         {new Date(tx.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
                       </p>
                     </div>
-                    <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
-                      {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
+                        {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() => cancelTx(tx.id)}
+                        title={isRtl ? 'בטל עסקה' : 'Cancel transaction'}
+                        style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, color: '#dc2626', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {isRtl ? 'בטל' : 'Undo'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
