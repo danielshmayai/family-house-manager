@@ -180,9 +180,24 @@ model WalletTransaction {
   walletId    String
   wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
   amount      Float
-  type        String   // CREDIT | DEBIT | POINTS_CONVERSION
+  type        String   // CREDIT | DEBIT | POINTS_CONVERSION | RECURRING
   description String?
   pointsUsed  Int?
   createdById String
   createdAt   DateTime @default(now())
+}
+
+model RecurringPayment {
+  id          String    @id @default(cuid())
+  householdId String
+  userId      String    // recipient
+  amount      Float
+  cycleType   String    // WEEKLY | MONTHLY
+  payDay      Int       // WEEKLY: 1=Mon…7=Sun  |  MONTHLY: 1–31
+  description String?
+  isActive    Boolean   @default(true)
+  createdById String
+  createdAt   DateTime  @default(now())
+  lastPaidAt  DateTime?
+  nextPayAt   DateTime
 }

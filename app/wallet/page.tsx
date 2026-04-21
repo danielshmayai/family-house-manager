@@ -105,6 +105,21 @@ export default function WalletPage() {
   // Manager: member transaction drawer
   const [selectedMember, setSelectedMember] = useState<{ id: string; name: string | null } | null>(null)
 
+  // Manager: recurring payments
+  type RecurringPayment = {
+    id: string; userId: string; amount: number; cycleType: string; payDay: number
+    description: string | null; isActive: boolean; nextPayAt: string; lastPaidAt: string | null
+    user: { id: string; name: string | null; email: string } | null
+  }
+  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([])
+  const [showRecurringForm, setShowRecurringForm] = useState(false)
+  const [rpUserId, setRpUserId] = useState('')
+  const [rpAmount, setRpAmount] = useState('')
+  const [rpCycleType, setRpCycleType] = useState<'WEEKLY' | 'MONTHLY'>('MONTHLY')
+  const [rpPayDay, setRpPayDay] = useState('1')
+  const [rpDesc, setRpDesc] = useState('')
+  const [rpSaving, setRpSaving] = useState(false)
+
   // Manager: set rate + min points
   const [newRate, setNewRate] = useState('')
   const [minPoints, setMinPoints] = useState(300)
@@ -129,7 +144,11 @@ export default function WalletPage() {
         fetch('/api/household/wallet-rate'),
       ]
       const isManagerUser = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
-      if (isManagerUser) requests.push(fetch('/api/wallet?all=true'))
+      if (isManagerUser) {
+        requests.push(fetch('/api/wallet?all=true'))
+        // Process any due recurring payments silently
+        fetch('/api/cron/process-recurring', { method: 'POST' }).catch(() => {})
+      }
 
       const [walletRes, rateRes, allTxRes] = await Promise.all(requests)
 
@@ -157,6 +176,12 @@ export default function WalletPage() {
     if (res.ok) setMembers(await res.json())
   }, [isManager, sessionUser?.householdId])
 
+  const fetchRecurring = useCallback(async () => {
+    if (!isManager) return
+    const res = await fetch('/api/household/recurring-payments')
+    if (res.ok) setRecurringPayments(await res.json())
+  }, [isManager])
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
@@ -165,8 +190,9 @@ export default function WalletPage() {
     if (status === 'authenticated') {
       fetchData()
       fetchMembers()
+      fetchRecurring()
     }
-  }, [status, fetchData, fetchMembers])
+  }, [status, fetchData, fetchMembers, fetchRecurring])
 
   function triggerCoinAnimation() {
     setCoins(generateCoins(18))
@@ -249,15 +275,59 @@ export default function WalletPage() {
     }
   }
 
+  async function handleSaveRecurring(e: React.FormEvent) {
+    e.preventDefault()
+    setRpSaving(true)
+    try {
+      const res = await fetch('/api/household/recurring-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: rpUserId, amount: parseFloat(rpAmount), cycleType: rpCycleType, payDay: parseInt(rpPayDay, 10), description: rpDesc || undefined })
+      })
+      if (res.ok) {
+        setShowRecurringForm(false)
+        setRpUserId(''); setRpAmount(''); setRpPayDay('1'); setRpDesc('')
+        fetchRecurring()
+      }
+    } finally {
+      setRpSaving(false)
+    }
+  }
+
+  async function handleToggleRecurring(id: string, isActive: boolean) {
+    await fetch(`/api/household/recurring-payments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !isActive })
+    })
+    fetchRecurring()
+  }
+
+  async function handleDeleteRecurring(id: string) {
+    await fetch(`/api/household/recurring-payments/${id}`, { method: 'DELETE' })
+    fetchRecurring()
+  }
+
   function txLabel(type: string) {
     if (type === 'CREDIT') return t(lang, 'walletTxCredit')
     if (type === 'DEBIT') return t(lang, 'walletTxDebit')
+    if (type === 'RECURRING') return isRtl ? 'תשלום קבוע' : 'Recurring'
     return t(lang, 'walletTxConvert')
   }
 
   function txColor(type: string) {
-    if (type === 'CREDIT' || type === 'POINTS_CONVERSION') return '#16a34a'
+    if (type === 'CREDIT' || type === 'POINTS_CONVERSION' || type === 'RECURRING') return '#16a34a'
     return '#dc2626'
+  }
+
+  function dayLabel(cycleType: string, payDay: number) {
+    if (cycleType === 'WEEKLY') {
+      const days = isRtl
+        ? ['', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת', 'ראשון']
+        : ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      return days[payDay] ?? payDay
+    }
+    return isRtl ? `יום ${payDay} לחודש` : `Day ${payDay} of month`
   }
 
   if (status === 'loading' || loading) {
@@ -458,6 +528,110 @@ export default function WalletPage() {
                   {savingRate ? t(lang, 'walletRateSaving') : t(lang, 'walletRateSave')}
                 </button>
               </form>
+            </div>
+
+            {/* Recurring payments */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: 0 }}>
+                  🔁 {isRtl ? 'תשלומים קבועים' : 'Recurring Payments'}
+                </h2>
+                <button
+                  onClick={() => setShowRecurringForm(v => !v)}
+                  style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: '#16a34a', cursor: 'pointer' }}
+                >
+                  {showRecurringForm ? (isRtl ? '✕ סגור' : '✕ Close') : (isRtl ? '+ הוסף' : '+ Add')}
+                </button>
+              </div>
+
+              {/* Add form */}
+              {showRecurringForm && (
+                <form onSubmit={handleSaveRecurring} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16, padding: '14px', background: '#f9fafb', borderRadius: 10 }}>
+                  <select value={rpUserId} onChange={e => setRpUserId(e.target.value)} required
+                    style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
+                    <option value="">{isRtl ? 'בחר חבר...' : 'Select member...'}</option>
+                    {members.map(m => <option key={m.id} value={m.id}>{m.name || m.id}</option>)}
+                  </select>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input type="number" min={0.01} step={0.01} placeholder={isRtl ? 'סכום ₪' : 'Amount ₪'} value={rpAmount}
+                      onChange={e => setRpAmount(e.target.value)} required
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)' }} />
+                    <select value={rpCycleType} onChange={e => { setRpCycleType(e.target.value as 'WEEKLY' | 'MONTHLY'); setRpPayDay('1') }}
+                      style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
+                      <option value="WEEKLY">{isRtl ? 'שבועי' : 'Weekly'}</option>
+                      <option value="MONTHLY">{isRtl ? 'חודשי' : 'Monthly'}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      {rpCycleType === 'WEEKLY' ? (isRtl ? 'יום בשבוע' : 'Day of week') : (isRtl ? 'יום בחודש' : 'Day of month')}
+                    </label>
+                    {rpCycleType === 'WEEKLY' ? (
+                      <select value={rpPayDay} onChange={e => setRpPayDay(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
+                        {(isRtl
+                          ? ['שני','שלישי','רביעי','חמישי','שישי','שבת','ראשון']
+                          : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+                        ).map((d, i) => <option key={i+1} value={i+1}>{d}</option>)}
+                      </select>
+                    ) : (
+                      <select value={rpPayDay} onChange={e => setRpPayDay(e.target.value)}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
+                        {Array.from({length: 28}, (_, i) => i+1).map(d => (
+                          <option key={d} value={d}>{isRtl ? `יום ${d}` : `Day ${d}`}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <input type="text" placeholder={isRtl ? 'תיאור (אופציונלי)' : 'Description (optional)'} value={rpDesc}
+                    onChange={e => setRpDesc(e.target.value)}
+                    style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)' }} />
+
+                  <button type="submit" disabled={rpSaving}
+                    style={{ padding: '10px 20px', borderRadius: 10, background: rpSaving ? '#d1d5db' : '#16a34a', color: '#fff', fontWeight: 700, border: 'none', cursor: rpSaving ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,14px)' }}>
+                    {rpSaving ? (isRtl ? 'שומר...' : 'Saving...') : (isRtl ? 'שמור תשלום קבוע' : 'Save Recurring Payment')}
+                  </button>
+                </form>
+              )}
+
+              {/* List */}
+              {recurringPayments.length === 0 ? (
+                <p style={{ color: '#9ca3af', fontSize: 'clamp(12px,3vw,13px)', margin: 0 }}>
+                  {isRtl ? 'אין תשלומים קבועים' : 'No recurring payments configured'}
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {recurringPayments.map(rp => (
+                    <div key={rp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: rp.isActive ? '#f0fdf4' : '#f9fafb', opacity: rp.isActive ? 1 : 0.6, gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(12px,3vw,14px)', color: '#1f2937' }}>
+                          {rp.user?.name || rp.userId} · <span style={{ color: '#16a34a' }}>₪{rp.amount.toFixed(2)}</span>
+                        </p>
+                        <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280' }}>
+                          {rp.cycleType === 'WEEKLY' ? (isRtl ? 'שבועי' : 'Weekly') : (isRtl ? 'חודשי' : 'Monthly')} · {dayLabel(rp.cycleType, rp.payDay)}
+                          {rp.description ? ` · ${rp.description}` : ''}
+                        </p>
+                        <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
+                          {isRtl ? 'הבא:' : 'Next:'} {new Date(rp.nextPayAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => handleToggleRecurring(rp.id, rp.isActive)}
+                          style={{ background: rp.isActive ? '#fef3c7' : '#d1fae5', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, cursor: 'pointer', color: rp.isActive ? '#92400e' : '#065f46' }}>
+                          {rp.isActive ? (isRtl ? 'השהה' : 'Pause') : (isRtl ? 'הפעל' : 'Resume')}
+                        </button>
+                        <button onClick={() => handleDeleteRecurring(rp.id)}
+                          style={{ background: '#fee2e2', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, cursor: 'pointer', color: '#dc2626' }}>
+                          {isRtl ? 'מחק' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Adjust balance */}
