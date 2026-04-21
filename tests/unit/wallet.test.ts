@@ -165,7 +165,7 @@ describe('POST /api/wallet/convert', () => {
 
   it('returns 400 when user has insufficient points', async () => {
     mockGetSessionUser.mockResolvedValue(MEMBER)
-    prismaMock.household.findUnique.mockResolvedValue({ pointToNisRate: 0.1 })
+    prismaMock.household.findUnique.mockResolvedValue({ pointToNisRate: 0.1, minPointsConversion: 1 })
     prismaMock.event.aggregate.mockResolvedValue({ _sum: { points: 50 } })
     prismaMock.walletTransaction.aggregate.mockResolvedValue({ _sum: { pointsUsed: 40 } })
     const { status, data } = await callConvert({ points: 20 })
@@ -175,7 +175,7 @@ describe('POST /api/wallet/convert', () => {
 
   it('converts points to NIS and credits wallet', async () => {
     mockGetSessionUser.mockResolvedValue(MEMBER)
-    prismaMock.household.findUnique.mockResolvedValue({ pointToNisRate: 0.1 })
+    prismaMock.household.findUnique.mockResolvedValue({ pointToNisRate: 0.1, minPointsConversion: 1 })
     prismaMock.event.aggregate.mockResolvedValue({ _sum: { points: 200 } })
     prismaMock.walletTransaction.aggregate.mockResolvedValue({ _sum: { pointsUsed: 0 } })
     prismaMock.wallet.upsert.mockResolvedValue({ ...baseWallet, balance: 10 })
