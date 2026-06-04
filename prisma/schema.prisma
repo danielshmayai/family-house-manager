@@ -31,6 +31,7 @@ model User {
   tasksAssigned   UserTask[]          @relation("TasksAssignedBy")
   tasksReceived   UserTask[]          @relation("TasksAssignedTo")
   wallet          Wallet?
+  walletRequests  WalletRequest[]
 }
 
 model Household {
@@ -46,6 +47,7 @@ model Household {
   invites         Invite[]
   members         User[]
   userTasks       UserTask[]
+  walletRequests  WalletRequest[]
 }
 
 model Invite {
@@ -185,6 +187,20 @@ model WalletTransaction {
   pointsUsed  Int?
   createdById String
   createdAt   DateTime @default(now())
+}
+
+model WalletRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  householdId  String
+  amount       Float
+  description  String?
+  status       String    @default("PENDING") // PENDING | APPROVED | DENIED
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 
 model RecurringPayment {
