@@ -53,6 +53,20 @@ async function callWalletRate(method: string, body: any = {}) {
   return { status: res._getStatusCode(), data: safeJson(res) }
 }
 
+async function callWalletRequest(method: string, body: any = {}) {
+  const { req, res } = createMocks({ method: method as any, body })
+  const { default: handler } = await import('@/pages/api/wallet/request/index')
+  await handler(req as any, res as any)
+  return { status: res._getStatusCode(), data: safeJson(res) }
+}
+
+async function callWalletRequestReview(id: string, body: any = {}) {
+  const { req, res } = createMocks({ method: 'PUT', query: { id }, body })
+  const { default: handler } = await import('@/pages/api/wallet/request/[id]')
+  await handler(req as any, res as any)
+  return { status: res._getStatusCode(), data: safeJson(res) }
+}
+
 // ── GET /api/wallet ───────────────────────────────────────────────────────────
 
 describe('GET /api/wallet', () => {
@@ -226,5 +240,127 @@ describe('PUT /api/household/wallet-rate', () => {
     const { status, data } = await callWalletRate('PUT', { pointToNisRate: 0.5 })
     expect(status).toBe(200)
     expect(data.pointToNisRate).toBe(0.5)
+  })
+})
+
+// ── POST /api/wallet/request ──────────────────────────────────────────────────
+
+describe('POST /api/wallet/request', () => {
+  it('returns 401 when not logged in', async () => {
+    mockGetSessionUser.mockResolvedValue(null)
+    const { status } = await callWalletRequest('POST', { amount: 50 })
+    expect(status).toBe(401)
+  })
+
+  it('returns 400 when user has no household', async () => {
+    mockGetSessionUser.mockResolvedValue({ ...MEMBER, householdId: null })
+    const { status } = await callWalletRequest('POST', { amount: 50 })
+    expect(status).toBe(400)
+  })
+
+  it('returns 400 when amount is missing', async () => {
+    mockGetSessionUser.mockResolvedValue(MEMBER)
+    const { status } = await callWalletRequest('POST', {})
+    expect(status).toBe(400)
+  })
+
+  it('returns 400 when amount is negative', async () => {
+    mockGetSessionUser.mockResolvedValue(MEMBER)
+    const { status } = await callWalletRequest('POST', { amount: -10 })
+    expect(status).toBe(400)
+  })
+
+  it('member creates a request successfully', async () => {
+    mockGetSessionUser.mockResolvedValue(MEMBER)
+    const mockReq = { id: 'wr1', userId: 'u1', householdId: 'hh1', amount: 50, description: 'pizza', status: 'PENDING', createdAt: new Date() }
+    prismaMock.walletRequest.create.mockResolvedValue(mockReq)
+    const { status, data } = await callWalletRequest('POST', { amount: 50, description: 'pizza' })
+    expect(status).toBe(201)
+    expect(data.status).toBe('PENDING')
+    expect(data.amount).toBe(50)
+  })
+})
+
+// ── GET /api/wallet/request ───────────────────────────────────────────────────
+
+describe('GET /api/wallet/request', () => {
+  it('returns 401 when not logged in', async () => {
+    mockGetSessionUser.mockResolvedValue(null)
+    const { status } = await callWalletRequest('GET')
+    expect(status).toBe(401)
+  })
+
+  it('member sees their own requests', async () => {
+    mockGetSessionUser.mockResolvedValue(MEMBER)
+    prismaMock.walletRequest.findMany.mockResolvedValue([
+      { id: 'wr1', amount: 50, status: 'PENDING', createdAt: new Date() }
+    ])
+    const { status, data } = await callWalletRequest('GET')
+    expect(status).toBe(200)
+    expect(Array.isArray(data)).toBe(true)
+    expect(data).toHaveLength(1)
+  })
+
+  it('manager sees all pending requests for household', async () => {
+    mockGetSessionUser.mockResolvedValue(MANAGER)
+    prismaMock.walletRequest.findMany.mockResolvedValue([
+      { id: 'wr1', amount: 50, status: 'PENDING', userId: 'u1', user: { id: 'u1', name: 'Alice', email: 'alice@x.com' } },
+      { id: 'wr2', amount: 30, status: 'PENDING', userId: 'u3', user: { id: 'u3', name: 'Carol', email: 'carol@x.com' } },
+    ])
+    const { status, data } = await callWalletRequest('GET')
+    expect(status).toBe(200)
+    expect(data).toHaveLength(2)
+    expect(data[0].user.name).toBe('Alice')
+  })
+})
+
+// ── PUT /api/wallet/request/[id] (review) ────────────────────────────────────
+
+describe('PUT /api/wallet/request/[id]', () => {
+  it('returns 403 when member tries to review', async () => {
+    mockGetSessionUser.mockResolvedValue(MEMBER)
+    const { status } = await callWalletRequestReview('wr1', { action: 'APPROVE' })
+    expect(status).toBe(403)
+  })
+
+  it('returns 400 for invalid action', async () => {
+    mockGetSessionUser.mockResolvedValue(MANAGER)
+    const { status } = await callWalletRequestReview('wr1', { action: 'MAYBE' })
+    expect(status).toBe(400)
+  })
+
+  it('returns 404 for unknown request', async () => {
+    mockGetSessionUser.mockResolvedValue(MANAGER)
+    prismaMock.walletRequest.findUnique.mockResolvedValue(null)
+    const { status } = await callWalletRequestReview('bad-id', { action: 'APPROVE' })
+    expect(status).toBe(404)
+  })
+
+  it('returns 409 when request already reviewed', async () => {
+    mockGetSessionUser.mockResolvedValue(MANAGER)
+    prismaMock.walletRequest.findUnique.mockResolvedValue({ id: 'wr1', status: 'APPROVED', householdId: 'hh1', userId: 'u1', amount: 50 })
+    const { status } = await callWalletRequestReview('wr1', { action: 'APPROVE' })
+    expect(status).toBe(409)
+  })
+
+  it('manager can deny a request', async () => {
+    mockGetSessionUser.mockResolvedValue(MANAGER)
+    prismaMock.walletRequest.findUnique.mockResolvedValue({ id: 'wr1', status: 'PENDING', householdId: 'hh1', userId: 'u1', amount: 50 })
+    prismaMock.walletRequest.update.mockResolvedValue({ id: 'wr1', status: 'DENIED' })
+    const { status, data } = await callWalletRequestReview('wr1', { action: 'DENY' })
+    expect(status).toBe(200)
+    expect(data.status).toBe('DENIED')
+  })
+
+  it('manager can approve a request and credits wallet', async () => {
+    mockGetSessionUser.mockResolvedValue(MANAGER)
+    prismaMock.walletRequest.findUnique.mockResolvedValue({ id: 'wr1', status: 'PENDING', householdId: 'hh1', userId: 'u1', amount: 50, description: 'pizza' })
+    prismaMock.wallet.upsert.mockResolvedValue({ id: 'w1', userId: 'u1', balance: 75.50 })
+    prismaMock.wallet.findUnique.mockResolvedValue({ id: 'w1', userId: 'u1', balance: 75.50 })
+    prismaMock.$transaction.mockResolvedValue([{}, {}])
+    const { status, data } = await callWalletRequestReview('wr1', { action: 'APPROVE' })
+    expect(status).toBe(200)
+    expect(data.status).toBe('APPROVED')
+    expect(data.balance).toBe(75.50)
   })
 })

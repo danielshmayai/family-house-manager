@@ -88,11 +88,22 @@ export function createPrismaMock() {
       findUnique: vi.fn(),
       upsert: vi.fn(),
       update: vi.fn(),
+      findMany: vi.fn(),
     },
     walletTransaction: {
       create: vi.fn(),
       aggregate: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      delete: vi.fn(),
     },
+    walletRequest: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn(),
   }
 }
 

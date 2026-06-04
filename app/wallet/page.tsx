@@ -14,6 +14,15 @@ type Transaction = {
   createdAt: string
 }
 
+type WalletRequest = {
+  id: string
+  amount: number
+  description: string | null
+  status: 'PENDING' | 'APPROVED' | 'DENIED'
+  createdAt: string
+  user?: { id: string; name: string | null; email: string }
+}
+
 type AllTransaction = Transaction & {
   wallet: { user: { id: string; name: string | null } }
 }
@@ -105,6 +114,16 @@ export default function WalletPage() {
   // Manager: member transaction drawer
   const [selectedMember, setSelectedMember] = useState<{ id: string; name: string | null } | null>(null)
 
+  // Wallet requests
+  const [myRequests, setMyRequests] = useState<WalletRequest[]>([])
+  const [pendingRequests, setPendingRequests] = useState<WalletRequest[]>([])
+  const [showRequestForm, setShowRequestForm] = useState(false)
+  const [requestAmount, setRequestAmount] = useState('')
+  const [requestDesc, setRequestDesc] = useState('')
+  const [requesting, setRequesting] = useState(false)
+  const [requestMsg, setRequestMsg] = useState('')
+  const [reviewingId, setReviewingId] = useState<string | null>(null)
+
   // Manager: recurring payments
   type RecurringPayment = {
     id: string; userId: string; amount: number; cycleType: string; payDay: number
@@ -135,6 +154,19 @@ export default function WalletPage() {
 
   const isManager = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
 
+  const fetchRequests = useCallback(async () => {
+    if (!sessionUser?.id) return
+    const res = await fetch('/api/wallet/request')
+    if (!res.ok) return
+    const data = await res.json()
+    const isManagerUser = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
+    if (isManagerUser) {
+      setPendingRequests(data)
+    } else {
+      setMyRequests(data)
+    }
+  }, [sessionUser?.id, sessionUser?.role])
+
   const fetchData = useCallback(async () => {
     if (!sessionUser?.id) return
     setLoading(true)
@@ -153,6 +185,7 @@ export default function WalletPage() {
       const [walletRes, rateRes, allTxRes] = await Promise.all(requests)
 
       if (walletRes.ok) setWallet(await walletRes.json())
+      fetchRequests()
       if (rateRes.ok) {
         const r = await rateRes.json()
         setRate(r.pointToNisRate ?? 0)
@@ -168,7 +201,7 @@ export default function WalletPage() {
     } finally {
       setLoading(false)
     }
-  }, [sessionUser?.id, sessionUser?.role])
+  }, [sessionUser?.id, sessionUser?.role, fetchRequests])
 
   const fetchMembers = useCallback(async () => {
     if (!isManager || !sessionUser?.householdId) return
@@ -193,6 +226,48 @@ export default function WalletPage() {
       fetchRecurring()
     }
   }, [status, fetchData, fetchMembers, fetchRecurring])
+
+  async function handleRequestMoney(e: React.FormEvent) {
+    e.preventDefault()
+    const amt = parseFloat(requestAmount)
+    if (!amt || amt <= 0) return
+    setRequesting(true)
+    setRequestMsg('')
+    try {
+      const res = await fetch('/api/wallet/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, description: requestDesc || undefined }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRequestMsg(isRtl ? 'הבקשה נשלחה בהצלחה!' : 'Request submitted!')
+        setRequestAmount('')
+        setRequestDesc('')
+        setShowRequestForm(false)
+        fetchRequests()
+      } else {
+        setRequestMsg(data.error || 'Error')
+      }
+    } finally {
+      setRequesting(false)
+    }
+  }
+
+  async function handleReviewRequest(id: string, action: 'APPROVE' | 'DENY') {
+    setReviewingId(id)
+    try {
+      await fetch(`/api/wallet/request/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      fetchRequests()
+      if (action === 'APPROVE') fetchData()
+    } finally {
+      setReviewingId(null)
+    }
+  }
 
   function triggerCoinAnimation() {
     setCoins(generateCoins(18))
@@ -478,9 +553,136 @@ export default function WalletPage() {
           )}
         </div>
 
+        {/* Member: request money */}
+        {!isManager && (
+          <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: 0 }}>
+                💸 {isRtl ? 'בקשת כסף' : 'Request Money'}
+              </h2>
+              <button
+                onClick={() => { setShowRequestForm(v => !v); setRequestMsg('') }}
+                style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: '#1d4ed8', cursor: 'pointer' }}
+              >
+                {showRequestForm ? (isRtl ? '✕ סגור' : '✕ Close') : (isRtl ? '+ בקש' : '+ Request')}
+              </button>
+            </div>
+
+            {showRequestForm && (
+              <form onSubmit={handleRequestMoney} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: myRequests.length > 0 ? 16 : 0 }}>
+                <input
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  placeholder={isRtl ? 'סכום ₪' : 'Amount ₪'}
+                  value={requestAmount}
+                  onChange={e => setRequestAmount(e.target.value)}
+                  required
+                  style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', outline: 'none' }}
+                />
+                <input
+                  type="text"
+                  placeholder={isRtl ? 'סיבה / תיאור (אופציונלי)' : 'Reason / description (optional)'}
+                  value={requestDesc}
+                  onChange={e => setRequestDesc(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', outline: 'none' }}
+                />
+                <button
+                  type="submit"
+                  disabled={requesting || !requestAmount}
+                  style={{ padding: '10px 20px', borderRadius: 10, background: requesting ? '#d1d5db' : '#1d4ed8', color: '#fff', fontWeight: 700, border: 'none', cursor: requesting ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', alignSelf: 'flex-start' }}
+                >
+                  {requesting ? (isRtl ? 'שולח...' : 'Sending...') : (isRtl ? 'שלח בקשה' : 'Send Request')}
+                </button>
+                {requestMsg && (
+                  <p style={{ margin: 0, color: requestMsg.includes('!') ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: 'clamp(12px,3vw,13px)' }}>
+                    {requestMsg}
+                  </p>
+                )}
+              </form>
+            )}
+
+            {myRequests.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {myRequests.map(r => (
+                  <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb' }}>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>₪{r.amount.toFixed(2)}</p>
+                      {r.description && (
+                        <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280' }}>{r.description}</p>
+                      )}
+                      <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
+                        {new Date(r.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
+                      </p>
+                    </div>
+                    <span style={{
+                      padding: '4px 12px', borderRadius: 20, fontSize: 'clamp(11px,2.5vw,12px)', fontWeight: 700,
+                      background: r.status === 'APPROVED' ? '#d1fae5' : r.status === 'DENIED' ? '#fee2e2' : '#fef3c7',
+                      color: r.status === 'APPROVED' ? '#065f46' : r.status === 'DENIED' ? '#dc2626' : '#92400e',
+                    }}>
+                      {r.status === 'APPROVED' ? (isRtl ? 'אושר' : 'Approved') : r.status === 'DENIED' ? (isRtl ? 'נדחה' : 'Denied') : (isRtl ? 'ממתין' : 'Pending')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {myRequests.length === 0 && !showRequestForm && (
+              <p style={{ color: '#9ca3af', fontSize: 'clamp(12px,3vw,13px)', margin: 0 }}>
+                {isRtl ? 'אין בקשות כסף עדיין' : 'No money requests yet'}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Manager: set rate + adjust balance */}
         {isManager && (
           <>
+            {/* Pending money requests */}
+            {pendingRequests.length > 0 && (
+              <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+                <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 14px' }}>
+                  📥 {isRtl ? 'בקשות כסף ממתינות' : 'Pending Money Requests'}
+                  <span style={{ marginInlineStart: 8, background: '#fef3c7', color: '#92400e', borderRadius: 12, padding: '2px 10px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700 }}>
+                    {pendingRequests.length}
+                  </span>
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pendingRequests.map(r => (
+                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1.5px solid #fde68a', gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>
+                          {r.user?.name || r.user?.email || '—'} · <span style={{ color: '#d97706' }}>₪{r.amount.toFixed(2)}</span>
+                        </p>
+                        {r.description && (
+                          <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</p>
+                        )}
+                        <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
+                          {new Date(r.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => handleReviewRequest(r.id, 'APPROVE')}
+                          disabled={reviewingId === r.id}
+                          style={{ background: '#d1fae5', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700, cursor: reviewingId === r.id ? 'not-allowed' : 'pointer', color: '#065f46' }}
+                        >
+                          {isRtl ? 'אשר' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleReviewRequest(r.id, 'DENY')}
+                          disabled={reviewingId === r.id}
+                          style={{ background: '#fee2e2', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700, cursor: reviewingId === r.id ? 'not-allowed' : 'pointer', color: '#dc2626' }}
+                        >
+                          {isRtl ? 'דחה' : 'Deny'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Rate setting */}
             <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
               <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>
