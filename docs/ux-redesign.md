@@ -28,18 +28,20 @@ Next session: read this file and start the first unchecked phase.
       full list in the "view all" Sheet; per-member history in the member Sheet)
 - [x] Page rebuilt on `PageHeader`/`Card`/`Button`/`Sheet` + tokens (1148 → ~700 lines)
 
-## Phase 3 — Screen cleanups
+## Phase 3 — Screen cleanups (in progress)
 - [ ] Home: show points/progress once (hero card only); remove header points pill; move help,
       what's-new, language, sign-out out of the header (they live in /more now)
 - [ ] History: one row of range chips + single "Filter" button opening a Sheet; fold summary cards
-      into a one-line stat; remove 🐛 debug banner and console.logs
-- [ ] Leaderboard: list starts at rank 4 (podium keeps top 3); use PageHeader
+      into a one-line stat
+- [x] History: 🐛 debug banner replaced with translated error banner + Retry; debug console.logs removed (2026-07-02)
+- [x] Leaderboard: list starts at rank 4 when podium shown, section hidden when empty;
+      dead bounce/pulse keyframes removed (2026-07-02)
 - [ ] Users: single "Add member" CTA opening a Sheet with Invite/Create options; card actions
       behind an overflow (⋯) menu
 - [ ] Admin: merge the two near-identical modals into one form component; overflow menu on rows;
       translate alert strings
-- [ ] Add (Quick Complete): fix success-message color bug (checks for '✅' never present);
-      remove the static "Quick Stats" tip card
+- [x] Add (Quick Complete): success-message color bug fixed (msg checked for '✅' never present);
+      static "Quick Stats" tip card removed (2026-07-02)
 
 ## Phase 4 — Production polish
 - [ ] Replace every `alert()`/`confirm()` with `ConfirmDialog` (translated)

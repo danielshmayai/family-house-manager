@@ -57,6 +57,9 @@ export default function Leaderboard() {
 
   const results: LeaderboardEntry[] = data?.results || []
   const top3 = results.slice(0, 3)
+  const showPodium = top3.length >= 2 && top3[0].points > 0
+  // When the podium is shown, the list continues from rank 4 — no duplicate top 3
+  const listEntries = showPodium ? results.slice(3) : results
 
   return (
     <div style={{
@@ -137,7 +140,7 @@ export default function Leaderboard() {
             </div>
           )}
 
-          {top3.length >= 2 && top3[0].points > 0 && (
+          {showPodium && (
             <div style={{ marginBottom: 'clamp(24px, 6vw, 40px)' }}>
               <div style={{ textAlign: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: '700', color: '#6B7280', letterSpacing: '1px' }}>
                 {t(lang, 'topChampions')}
@@ -189,13 +192,15 @@ export default function Leaderboard() {
             </div>
           )}
 
+          {listEntries.length > 0 && (
+          <>
           <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '800', color: '#374151' }}>
             {t(lang, 'allRankings')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 2vw, 12px)' }}>
-            {results.map((entry: LeaderboardEntry, i: number) => {
+            {listEntries.map((entry: LeaderboardEntry, i: number) => {
               const isCurrentUser = (session?.user as any)?.id === entry.user.id
-              const position = i + 1
+              const position = (showPodium ? 3 : 0) + i + 1
               return (
                 <div key={entry.user.id} style={{
                   background: isCurrentUser ? 'linear-gradient(135deg, #EDE9FE, #DDD6FE)' : 'white',
@@ -249,13 +254,10 @@ export default function Leaderboard() {
               )
             })}
           </div>
+          </>
+          )}
         </>
       )}
-
-      <style jsx global>{`
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
-      `}</style>
     </div>
   )
 }

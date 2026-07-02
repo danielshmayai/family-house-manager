@@ -296,8 +296,8 @@ export default function QuickCompletePage(){
               padding: 'clamp(12px, 3vw, 16px)',
               borderRadius: '12px',
               marginBottom: 'clamp(16px, 4vw, 24px)',
-              background: msg.includes('✅') ? '#D1FAE5' : '#FEE2E2',
-              color: msg.includes('✅') ? '#065F46' : '#991B1B',
+              background: msg.includes('❌') ? '#FEE2E2' : '#D1FAE5',
+              color: msg.includes('❌') ? '#991B1B' : '#065F46',
               fontWeight: '600',
               textAlign: 'center',
               fontSize: 'clamp(13px, 3.5vw, 16px)'
@@ -349,23 +349,6 @@ export default function QuickCompletePage(){
             </button>
           </div>
         </form>
-
-        {/* Quick Stats */}
-        <div style={{
-          marginTop: 'clamp(16px, 4vw, 24px)',
-          padding: 'clamp(16px, 4vw, 20px)',
-          background: 'white',
-          borderRadius: '16px',
-          border: '2px solid #E5E7EB',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: 'clamp(12px, 3vw, 14px)', color: '#666', marginBottom: '8px' }}>
-            {t(lang, 'tipLabel')}
-          </div>
-          <div style={{ fontSize: '16px', fontWeight: '600', color: '#374151' }}>
-            {t(lang, 'tipText')}
-          </div>
-        </div>
       </div>
     </div>
   )

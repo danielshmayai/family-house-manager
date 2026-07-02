@@ -189,10 +189,6 @@ export default function HistoryPage() {
         setFetchError(msg)
         return
       }
-      console.log('[History] API response keys:', Object.keys(data))
-      console.log('[History] categories from API:', data.categories?.length, data.categories)
-      console.log('[History] activities from API:', data.activities?.length)
-      console.log('[History] members from API:', data.members?.length)
       setEvents(data.events)
       setTotal(data.total)
       setTopActivities(data.topActivities)
@@ -305,14 +301,21 @@ export default function HistoryPage() {
           </select>
         </div>
 
-        {/* ── Debug Error Banner ── */}
+        {/* ── Error banner ── */}
         {fetchError && (
           <div style={{
-            background: '#FEE2E2', border: '2px solid #EF4444', borderRadius: '10px',
-            padding: '10px 14px', marginBottom: '12px', fontSize: '12px',
-            color: '#991B1B', fontWeight: '600', wordBreak: 'break-all',
+            background: 'var(--color-danger-bg)', borderRadius: '10px',
+            padding: '12px 14px', marginBottom: '12px', fontSize: '13px',
+            color: 'var(--color-danger)', fontWeight: '600',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
           }}>
-            🐛 שגיאה: {fetchError}
+            <span>{isHe ? 'לא הצלחנו לטעון את ההיסטוריה. נסו שוב.' : "Couldn't load history. Please try again."}</span>
+            <button
+              onClick={() => fetchHistory()}
+              style={{ background: 'var(--color-danger)', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+            >
+              {isHe ? 'נסה שוב' : 'Retry'}
+            </button>
           </div>
         )}
 
