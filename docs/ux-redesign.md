@@ -3,9 +3,10 @@
 Goal: make the app read as one product — less crowded screens, one design language,
 production polish. Full proposal reviewed with the product owner on 2026-07-02.
 
-**How to work this plan:** each phase is sized to fit one session. Complete a phase,
-run `npm test`, push, and check it off here. Next session: read this file and start
-the first unchecked phase.
+**How to work this plan:** each phase is sized to fit one session and deploys to
+production on completion. Complete a phase, run the pre-deploy checks (tsc, tests,
+migrate status, smoke test), merge to master, push, and check it off here.
+Next session: read this file and start the first unchecked phase.
 
 ## Phase 1 — Foundation ✅ (done 2026-07-02)
 - [x] Design tokens in `app/globals.css` (`--color-brand`, `--gradient-brand`, radii, shadows, `--nav-clearance`, `--page-max-width`)
