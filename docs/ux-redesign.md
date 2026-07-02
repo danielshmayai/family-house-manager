@@ -17,15 +17,16 @@ Next session: read this file and start the first unchecked phase.
 - [x] `/more` hub page: Family + History/Manage (manager) + Product Admin (gated), language toggle, sign out
 - [x] i18n keys: `navMore`, `more*` (en + he); removed hardcoded Hebrew nav label
 
-## Phase 2 — Wallet restructure
-- [ ] Default view = summary only: balance hero (with points chip + convert CTA), pending-requests
-      badge card, family member list, 5 recent transactions + "view all"
-- [ ] Fold adjust-balance into the member detail Sheet (`+ Add / − Deduct` buttons) — remove the
-      standalone always-open form with the member dropdown
-- [ ] Move recurring payments to its own sub-screen (`/wallet/recurring`) linked from wallet
-- [ ] Move rate + min-points settings to a Sheet or sub-screen
-- [ ] Remove the separate "all household transactions" card (reachable via member drill-in / view all)
-- [ ] Use `PageHeader`, `Card`, `Button`, `Sheet` from `components/ui/`
+## Phase 2 — Wallet restructure ✅ (done 2026-07-02)
+- [x] Default view = summary only: balance hero (points chip + convert CTA + request-money CTA),
+      pending-requests card, family member list, 5 recent transactions + "view all" Sheet
+- [x] Adjust-balance folded into the member detail Sheet (`+ Credit / − Debit` buttons);
+      standalone form removed
+- [x] Recurring payments moved to `/wallet/recurring` (manager-only sub-screen)
+- [x] Rate + min-points settings moved to a Sheet
+- [x] Separate "all household transactions" card removed (manager recent list is household-wide;
+      full list in the "view all" Sheet; per-member history in the member Sheet)
+- [x] Page rebuilt on `PageHeader`/`Card`/`Button`/`Sheet` + tokens (1148 → ~700 lines)
 
 ## Phase 3 — Screen cleanups
 - [ ] Home: show points/progress once (hero card only); remove header points pill; move help,

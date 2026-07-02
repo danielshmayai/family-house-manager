@@ -4,14 +4,22 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
+import PageHeader from '@/components/ui/PageHeader'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import Sheet from '@/components/ui/Sheet'
 
 type Transaction = {
   id: string
   amount: number
-  type: 'CREDIT' | 'DEBIT' | 'POINTS_CONVERSION'
+  type: 'CREDIT' | 'DEBIT' | 'POINTS_CONVERSION' | 'RECURRING'
   description: string | null
   pointsUsed: number | null
   createdAt: string
+}
+
+type AllTransaction = Transaction & {
+  wallet: { user: { id: string; name: string | null } }
 }
 
 type WalletRequest = {
@@ -23,10 +31,6 @@ type WalletRequest = {
   user?: { id: string; name: string | null; email: string }
 }
 
-type AllTransaction = Transaction & {
-  wallet: { user: { id: string; name: string | null } }
-}
-
 type WalletData = {
   id: string
   balance: number
@@ -34,20 +38,14 @@ type WalletData = {
   transactions: Transaction[]
 }
 
-type FamilyMember = {
+type MemberWallet = {
   id: string
-  name: string | null
-  role: string
+  balance: number
+  availablePoints: number
+  user: { id: string; name: string | null }
 }
 
-type Coin = {
-  id: number
-  x: number
-  y: number
-  size: number
-  delay: number
-  rotation: number
-}
+type Coin = { id: number; x: number; y: number; size: number; delay: number; rotation: number }
 
 function generateCoins(count: number): Coin[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -64,26 +62,26 @@ function playBlingSound() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
     const notes = [523.25, 659.25, 783.99, 1046.5] // C5, E5, G5, C6
-
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
       gain.connect(ctx.destination)
-
       osc.type = 'sine'
       osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1)
-
       gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.1)
       gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.1 + 0.02)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.4)
-
       osc.start(ctx.currentTime + i * 0.1)
       osc.stop(ctx.currentTime + i * 0.1 + 0.4)
     })
   } catch {
     // Audio not supported — silent fallback
   }
+}
+
+function formatMoney(amount: number) {
+  return `${amount < 0 ? '-' : ''}₪${Math.abs(amount).toFixed(2)}`
 }
 
 export default function WalletPage() {
@@ -94,57 +92,40 @@ export default function WalletPage() {
 
   const [wallet, setWallet] = useState<WalletData | null>(null)
   const [allTransactions, setAllTransactions] = useState<AllTransaction[]>([])
-  const [memberWallets, setMemberWallets] = useState<{ id: string; balance: number; availablePoints: number; user: { id: string; name: string | null } }[]>([])
+  const [memberWallets, setMemberWallets] = useState<MemberWallet[]>([])
   const [rate, setRate] = useState(0)
+  const [minPoints, setMinPoints] = useState(300)
   const [loading, setLoading] = useState(true)
+
+  // Which sheet is open (one at a time)
+  const [sheet, setSheet] = useState<null | 'convert' | 'request' | 'rate' | 'history'>(null)
+  const [selectedMember, setSelectedMember] = useState<{ id: string; name: string | null } | null>(null)
 
   // Convert form
   const [convertPoints, setConvertPoints] = useState('')
   const [converting, setConverting] = useState(false)
   const [convertMsg, setConvertMsg] = useState('')
 
-  // Manager: adjust balance
-  const [members, setMembers] = useState<FamilyMember[]>([])
-  const [adjustUserId, setAdjustUserId] = useState('')
-  const [adjustAmount, setAdjustAmount] = useState('')
-  const [adjustType, setAdjustType] = useState<'CREDIT' | 'DEBIT'>('CREDIT')
-  const [adjustDesc, setAdjustDesc] = useState('')
-  const [adjusting, setAdjusting] = useState(false)
-
-  // Manager: member transaction drawer
-  const [selectedMember, setSelectedMember] = useState<{ id: string; name: string | null } | null>(null)
-  const [summaryCopied, setSummaryCopied] = useState(false)
-
   // Wallet requests
   const [myRequests, setMyRequests] = useState<WalletRequest[]>([])
   const [pendingRequests, setPendingRequests] = useState<WalletRequest[]>([])
-  const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestAmount, setRequestAmount] = useState('')
   const [requestDesc, setRequestDesc] = useState('')
   const [requesting, setRequesting] = useState(false)
   const [requestMsg, setRequestMsg] = useState('')
   const [reviewingId, setReviewingId] = useState<string | null>(null)
 
-  // Manager: recurring payments
-  type RecurringPayment = {
-    id: string; userId: string; amount: number; cycleType: string; payDay: number
-    description: string | null; isActive: boolean; nextPayAt: string; lastPaidAt: string | null
-    user: { id: string; name: string | null; email: string } | null
-  }
-  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([])
-  const [showRecurringForm, setShowRecurringForm] = useState(false)
-  const [rpUserId, setRpUserId] = useState('')
-  const [rpAmount, setRpAmount] = useState('')
-  const [rpCycleType, setRpCycleType] = useState<'WEEKLY' | 'MONTHLY'>('MONTHLY')
-  const [rpPayDay, setRpPayDay] = useState('1')
-  const [rpDesc, setRpDesc] = useState('')
-  const [rpSaving, setRpSaving] = useState(false)
-
-  // Manager: set rate + min points
+  // Manager: rate settings
   const [newRate, setNewRate] = useState('')
-  const [minPoints, setMinPoints] = useState(300)
   const [newMinPoints, setNewMinPoints] = useState('300')
   const [savingRate, setSavingRate] = useState(false)
+
+  // Manager: adjust inside member sheet
+  const [adjustAmount, setAdjustAmount] = useState('')
+  const [adjustDesc, setAdjustDesc] = useState('')
+  const [adjusting, setAdjusting] = useState(false)
+
+  const [summaryCopied, setSummaryCopied] = useState(false)
 
   // Coin animation
   const [showCoins, setShowCoins] = useState(false)
@@ -152,7 +133,6 @@ export default function WalletPage() {
   const coinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const sessionUser = session?.user as any
-
   const isManager = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
 
   const fetchRequests = useCallback(async () => {
@@ -161,11 +141,8 @@ export default function WalletPage() {
     if (!res.ok) return
     const data = await res.json()
     const isManagerUser = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
-    if (isManagerUser) {
-      setPendingRequests(data)
-    } else {
-      setMyRequests(data)
-    }
+    if (isManagerUser) setPendingRequests(data)
+    else setMyRequests(data)
   }, [sessionUser?.id, sessionUser?.role])
 
   const fetchData = useCallback(async () => {
@@ -204,29 +181,47 @@ export default function WalletPage() {
     }
   }, [sessionUser?.id, sessionUser?.role, fetchRequests])
 
-  const fetchMembers = useCallback(async () => {
-    if (!isManager || !sessionUser?.householdId) return
-    const res = await fetch(`/api/users?householdId=${sessionUser.householdId}`)
-    if (res.ok) setMembers(await res.json())
-  }, [isManager, sessionUser?.householdId])
-
-  const fetchRecurring = useCallback(async () => {
-    if (!isManager) return
-    const res = await fetch('/api/household/recurring-payments')
-    if (res.ok) setRecurringPayments(await res.json())
-  }, [isManager])
-
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchData()
-      fetchMembers()
-      fetchRecurring()
+    if (status === 'authenticated') fetchData()
+  }, [status, fetchData])
+
+  function triggerCoinAnimation() {
+    setCoins(generateCoins(18))
+    setShowCoins(true)
+    playBlingSound()
+    if (coinTimer.current) clearTimeout(coinTimer.current)
+    coinTimer.current = setTimeout(() => setShowCoins(false), 2200)
+  }
+
+  async function handleConvert(e: React.FormEvent) {
+    e.preventDefault()
+    const pts = parseInt(convertPoints, 10)
+    if (!pts || pts <= 0) return
+    setConverting(true)
+    setConvertMsg('')
+    try {
+      const res = await fetch('/api/wallet/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: pts })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setSheet(null)
+        triggerCoinAnimation()
+        setConvertPoints('')
+        fetchData()
+      } else {
+        setConvertMsg(data.error || 'Error')
+      }
+    } finally {
+      setConverting(false)
     }
-  }, [status, fetchData, fetchMembers, fetchRecurring])
+  }
 
   async function handleRequestMoney(e: React.FormEvent) {
     e.preventDefault()
@@ -242,10 +237,9 @@ export default function WalletPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setRequestMsg(isRtl ? 'הבקשה נשלחה בהצלחה!' : 'Request submitted!')
         setRequestAmount('')
         setRequestDesc('')
-        setShowRequestForm(false)
+        setSheet(null)
         fetchRequests()
       } else {
         setRequestMsg(data.error || 'Error')
@@ -270,65 +264,6 @@ export default function WalletPage() {
     }
   }
 
-  function triggerCoinAnimation() {
-    setCoins(generateCoins(18))
-    setShowCoins(true)
-    playBlingSound()
-    if (coinTimer.current) clearTimeout(coinTimer.current)
-    coinTimer.current = setTimeout(() => setShowCoins(false), 2200)
-  }
-
-  async function handleConvert(e: React.FormEvent) {
-    e.preventDefault()
-    const pts = parseInt(convertPoints, 10)
-    if (!pts || pts <= 0) return
-    setConverting(true)
-    setConvertMsg('')
-    try {
-      const res = await fetch('/api/wallet/convert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ points: pts })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        triggerCoinAnimation()
-        setConvertMsg(t(lang, 'walletConvertSuccess')(data.pointsUsed, data.nisAdded))
-        setConvertPoints('')
-        fetchData()
-      } else {
-        setConvertMsg(data.error || 'Error')
-      }
-    } finally {
-      setConverting(false)
-    }
-  }
-
-  async function handleAdjust(e: React.FormEvent) {
-    e.preventDefault()
-    if (!adjustUserId || !adjustAmount) return
-    setAdjusting(true)
-    try {
-      const res = await fetch('/api/wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: adjustUserId,
-          amount: parseFloat(adjustAmount),
-          type: adjustType,
-          description: adjustDesc || undefined
-        })
-      })
-      if (res.ok) {
-        setAdjustAmount('')
-        setAdjustDesc('')
-        fetchData()
-      }
-    } finally {
-      setAdjusting(false)
-    }
-  }
-
   async function handleSaveRate(e: React.FormEvent) {
     e.preventDefault()
     setSavingRate(true)
@@ -345,43 +280,35 @@ export default function WalletPage() {
         const data = await res.json()
         setRate(data.pointToNisRate)
         setMinPoints(data.minPointsConversion ?? 300)
+        setSheet(null)
       }
     } finally {
       setSavingRate(false)
     }
   }
 
-  async function handleSaveRecurring(e: React.FormEvent) {
-    e.preventDefault()
-    setRpSaving(true)
+  async function handleAdjust(type: 'CREDIT' | 'DEBIT') {
+    if (!selectedMember || !adjustAmount) return
+    setAdjusting(true)
     try {
-      const res = await fetch('/api/household/recurring-payments', {
+      const res = await fetch('/api/wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: rpUserId, amount: parseFloat(rpAmount), cycleType: rpCycleType, payDay: parseInt(rpPayDay, 10), description: rpDesc || undefined })
+        body: JSON.stringify({
+          userId: selectedMember.id,
+          amount: parseFloat(adjustAmount),
+          type,
+          description: adjustDesc || undefined
+        })
       })
       if (res.ok) {
-        setShowRecurringForm(false)
-        setRpUserId(''); setRpAmount(''); setRpPayDay('1'); setRpDesc('')
-        fetchRecurring()
+        setAdjustAmount('')
+        setAdjustDesc('')
+        fetchData()
       }
     } finally {
-      setRpSaving(false)
+      setAdjusting(false)
     }
-  }
-
-  async function handleToggleRecurring(id: string, isActive: boolean) {
-    await fetch(`/api/household/recurring-payments/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isActive: !isActive })
-    })
-    fetchRecurring()
-  }
-
-  async function handleDeleteRecurring(id: string) {
-    await fetch(`/api/household/recurring-payments/${id}`, { method: 'DELETE' })
-    fetchRecurring()
   }
 
   function txLabel(type: string) {
@@ -392,24 +319,48 @@ export default function WalletPage() {
   }
 
   function txColor(type: string) {
-    if (type === 'CREDIT' || type === 'POINTS_CONVERSION' || type === 'RECURRING') return '#16a34a'
-    return '#dc2626'
+    if (type === 'DEBIT') return 'var(--color-danger)'
+    return 'var(--color-success)'
   }
 
-  function dayLabel(cycleType: string, payDay: number) {
-    if (cycleType === 'WEEKLY') {
-      const days = isRtl
-        ? ['', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת', 'ראשון']
-        : ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-      return days[payDay] ?? payDay
-    }
-    return isRtl ? `יום ${payDay} לחודש` : `Day ${payDay} of month`
+  function formatTxDate(iso: string) {
+    return new Date(iso).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+    border: '2px solid var(--color-line)', fontSize: 'clamp(14px,4vw,16px)',
+    outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+  }
+
+  function TxRow({ tx, who, trailing }: { tx: Transaction; who?: string | null; trailing?: React.ReactNode }) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: 'clamp(12px,3vw,14px)', color: 'var(--color-ink)' }}>
+            {who ? `${who} · ` : ''}{txLabel(tx.type)}
+          </p>
+          {tx.description && (
+            <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {tx.description}
+            </p>
+          )}
+          <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: 'var(--color-muted)', opacity: 0.8 }}>
+            {formatTxDate(tx.createdAt)}
+          </p>
+        </div>
+        <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
+          {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
+        </span>
+        {trailing}
+      </div>
+    )
   }
 
   if (status === 'loading' || loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-        <p style={{ color: '#6b7280', fontSize: 'clamp(14px,4vw,16px)' }}>{t(lang, 'loading')}</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface)' }}>
+        <p style={{ color: 'var(--color-muted)', fontSize: 'clamp(14px,4vw,16px)' }}>{t(lang, 'loading')}</p>
       </div>
     )
   }
@@ -419,12 +370,17 @@ export default function WalletPage() {
   const enteredPoints = parseInt(convertPoints, 10)
   const belowMinimum = !!convertPoints && (!enteredPoints || enteredPoints < minPoints)
 
+  // Recent = own transactions for members; household-wide for managers
+  const recentTxs: (Transaction & { who?: string | null })[] = isManager
+    ? allTransactions.slice(0, 5).map(tx => ({ ...tx, who: tx.wallet.user.name || tx.wallet.user.id }))
+    : (wallet?.transactions ?? []).slice(0, 5)
+
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#fef9c3 0%,#fef3c7 50%,#fde68a 100%)', padding: 'clamp(16px,4vw,32px)', fontFamily: 'system-ui,sans-serif', position: 'relative', overflow: 'hidden' }}>
+    <div dir={isRtl ? 'rtl' : 'ltr'} style={{ minHeight: '100vh', background: 'var(--color-surface)' }}>
 
       {/* Coin animation overlay */}
       {showCoins && (
-        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100, overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 400, overflow: 'hidden' }}>
           <style>{`
             @keyframes coinFly {
               0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
@@ -439,579 +395,299 @@ export default function WalletPage() {
           `}</style>
           {coins.map(coin => (
             <div key={coin.id} style={{
-              position: 'absolute',
-              left: `${coin.x}%`,
-              top: `${coin.y}%`,
+              position: 'absolute', left: `${coin.x}%`, top: `${coin.y}%`,
               fontSize: `${coin.size}px`,
-              animation: `coinFly 1.8s cubic-bezier(0.22,0.61,0.36,1) forwards`,
+              animation: 'coinFly 1.8s cubic-bezier(0.22,0.61,0.36,1) forwards',
               animationDelay: `${coin.delay}ms`,
               transform: `rotate(${coin.rotation}deg)`,
               userSelect: 'none'
             }}>🪙</div>
           ))}
-          {/* Wallet icon at bottom center */}
-          <div style={{
-            position: 'absolute',
-            bottom: '8%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: '64px',
-            animation: 'walletPulse 0.6s ease-in-out 0.8s 2',
-          }}>💰</div>
+          <div style={{ position: 'absolute', bottom: '8%', left: '50%', transform: 'translateX(-50%)', fontSize: 64, animation: 'walletPulse 0.6s ease-in-out 0.8s 2' }}>💰</div>
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ maxWidth: 600, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 'clamp(22px,6vw,32px)', fontWeight: 800, color: '#78350f', margin: '0 0 4px' }}>
-          {t(lang, 'walletTitle')}
-        </h1>
-        <p style={{ color: '#92400e', fontSize: 'clamp(13px,3.5vw,15px)', margin: '0 0 24px' }}>
-          {t(lang, 'walletSubtitle')}
-        </p>
+      <PageHeader title={t(lang, 'walletTitle')} subtitle={t(lang, 'walletSubtitle')} />
 
-        {/* Balance card */}
-        <div style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: 20, padding: 'clamp(20px,5vw,32px)', textAlign: 'center', boxShadow: '0 8px 32px rgba(245,158,11,0.4)', marginBottom: 24, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, fontSize: 100, opacity: 0.1 }}>💰</div>
+      <div style={{ maxWidth: 'var(--page-max-width)', margin: '0 auto', padding: 'clamp(16px,4vw,24px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* Balance hero */}
+        <div style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: 'var(--radius-md)', padding: 'clamp(20px,5vw,28px)', textAlign: 'center', boxShadow: '0 8px 32px rgba(245,158,11,0.35)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, insetInlineEnd: -20, fontSize: 100, opacity: 0.1 }} aria-hidden="true">💰</div>
           <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(12px,3vw,14px)', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', margin: '0 0 8px' }}>
             {t(lang, 'walletBalance')}
           </p>
-          <p style={{ color: '#fff', fontSize: 'clamp(40px,10vw,64px)', fontWeight: 900, margin: 0, lineHeight: 1 }}>
-            {(wallet?.balance ?? 0) < 0 ? '-' : ''}{t(lang, 'walletCurrency')}{Math.abs(wallet?.balance ?? 0).toFixed(2)}
+          <p style={{ color: '#fff', fontSize: 'clamp(36px,9vw,56px)', fontWeight: 900, margin: 0, lineHeight: 1 }}>
+            {formatMoney(wallet?.balance ?? 0)}
           </p>
-        </div>
-
-        {/* Convert points section */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 12px' }}>
-            {t(lang, 'walletConvertTitle')}
-          </h2>
-
-          {rate <= 0 ? (
-            <p style={{ color: '#9ca3af', fontSize: 'clamp(13px,3.5vw,14px)' }}>
-              {t(lang, 'walletNoRate')}
-            </p>
-          ) : (
-            <>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-                <span
-                  onClick={() => setConvertPoints(String(pointsAvailable))}
-                  style={{ background: '#fef3c7', color: '#92400e', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
-                >
-                  {t(lang, 'walletPointsAvailable')(pointsAvailable)}
-                </span>
-                <span style={{ background: '#ede9fe', color: '#5b21b6', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600 }}>
-                  {lang === 'he' ? `מינימום: ${minPoints} נק'` : `Min: ${minPoints} pts`}
-                </span>
-                {isManager && (
-                  <span style={{ background: '#d1fae5', color: '#065f46', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600 }}>
-                    {t(lang, 'walletRate')(rate)}
-                  </span>
-                )}
-                {maxConvertNis > 0 && (
-                  <span
-                    onClick={() => setConvertPoints(String(pointsAvailable))}
-                    style={{ background: '#dbeafe', color: '#1e40af', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
-                  >
-                    {t(lang, 'walletConvertMax')(maxConvertNis)}
-                  </span>
-                )}
-              </div>
-
-              <form onSubmit={handleConvert} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <input
-                    type="number"
-                    min={minPoints}
-                    max={pointsAvailable}
-                    value={convertPoints}
-                    onChange={e => setConvertPoints(e.target.value)}
-                    placeholder={String(minPoints)}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `2px solid ${belowMinimum ? '#fca5a5' : '#fde68a'}`, fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={converting || !convertPoints || belowMinimum || (enteredPoints || 0) <= 0}
-                  style={{ padding: '10px 20px', borderRadius: 10, background: (converting || belowMinimum) ? '#d1d5db' : 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff', fontWeight: 700, border: 'none', cursor: (converting || belowMinimum) ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', whiteSpace: 'nowrap' }}
-                >
-                  {converting ? t(lang, 'walletConverting') : t(lang, 'walletConvertBtn')}
-                </button>
-              </form>
-
-              {belowMinimum && (
-                <p style={{ marginTop: 8, color: '#dc2626', fontWeight: 600, fontSize: 'clamp(12px,3vw,13px)' }}>
-                  {lang === 'he' ? `נדרש מינימום של ${minPoints} נקודות להמרה` : `Minimum ${minPoints} points required to convert`}
-                </p>
-              )}
-
-              {convertMsg && (
-                <p style={{ marginTop: 10, color: convertMsg.includes('!') ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: 'clamp(13px,3.5vw,14px)' }}>
-                  {convertMsg}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Member: request money */}
-        {!isManager && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: 0 }}>
-                💸 {isRtl ? 'בקשת כסף' : 'Request Money'}
-              </h2>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 16 }}>
+            <button
+              onClick={() => { setConvertMsg(''); setSheet('convert') }}
+              style={{ background: 'rgba(255,255,255,0.22)', border: '1.5px solid rgba(255,255,255,0.45)', borderRadius: 999, padding: '7px 16px', color: '#fff', fontWeight: 700, fontSize: 'clamp(12px,3.2vw,14px)', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              ⭐ {pointsAvailable} · {t(lang, 'walletConvertBtn')}
+            </button>
+            {!isManager && (
               <button
-                onClick={() => { setShowRequestForm(v => !v); setRequestMsg('') }}
-                style={{ background: '#eff6ff', border: '1.5px solid #93c5fd', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: '#1d4ed8', cursor: 'pointer' }}
+                onClick={() => { setRequestMsg(''); setSheet('request') }}
+                style={{ background: 'rgba(255,255,255,0.22)', border: '1.5px solid rgba(255,255,255,0.45)', borderRadius: 999, padding: '7px 16px', color: '#fff', fontWeight: 700, fontSize: 'clamp(12px,3.2vw,14px)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                {showRequestForm ? (isRtl ? '✕ סגור' : '✕ Close') : (isRtl ? '+ בקש' : '+ Request')}
+                💸 {isRtl ? 'בקש כסף' : 'Request money'}
               </button>
-            </div>
-
-            {showRequestForm && (
-              <form onSubmit={handleRequestMoney} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: myRequests.length > 0 ? 16 : 0 }}>
-                <input
-                  type="number"
-                  min={0.01}
-                  step={0.01}
-                  placeholder={isRtl ? 'סכום ₪' : 'Amount ₪'}
-                  value={requestAmount}
-                  onChange={e => setRequestAmount(e.target.value)}
-                  required
-                  style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', outline: 'none' }}
-                />
-                <input
-                  type="text"
-                  placeholder={isRtl ? 'סיבה / תיאור (אופציונלי)' : 'Reason / description (optional)'}
-                  value={requestDesc}
-                  onChange={e => setRequestDesc(e.target.value)}
-                  style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', outline: 'none' }}
-                />
-                <button
-                  type="submit"
-                  disabled={requesting || !requestAmount}
-                  style={{ padding: '10px 20px', borderRadius: 10, background: requesting ? '#d1d5db' : '#1d4ed8', color: '#fff', fontWeight: 700, border: 'none', cursor: requesting ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', alignSelf: 'flex-start' }}
-                >
-                  {requesting ? (isRtl ? 'שולח...' : 'Sending...') : (isRtl ? 'שלח בקשה' : 'Send Request')}
-                </button>
-                {requestMsg && (
-                  <p style={{ margin: 0, color: requestMsg.includes('!') ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: 'clamp(12px,3vw,13px)' }}>
-                    {requestMsg}
-                  </p>
-                )}
-              </form>
-            )}
-
-            {myRequests.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {myRequests.map(r => (
-                  <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb' }}>
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>₪{r.amount.toFixed(2)}</p>
-                      {r.description && (
-                        <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280' }}>{r.description}</p>
-                      )}
-                      <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
-                        {new Date(r.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
-                      </p>
-                    </div>
-                    <span style={{
-                      padding: '4px 12px', borderRadius: 20, fontSize: 'clamp(11px,2.5vw,12px)', fontWeight: 700,
-                      background: r.status === 'APPROVED' ? '#d1fae5' : r.status === 'DENIED' ? '#fee2e2' : '#fef3c7',
-                      color: r.status === 'APPROVED' ? '#065f46' : r.status === 'DENIED' ? '#dc2626' : '#92400e',
-                    }}>
-                      {r.status === 'APPROVED' ? (isRtl ? 'אושר' : 'Approved') : r.status === 'DENIED' ? (isRtl ? 'נדחה' : 'Denied') : (isRtl ? 'ממתין' : 'Pending')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {myRequests.length === 0 && !showRequestForm && (
-              <p style={{ color: '#9ca3af', fontSize: 'clamp(12px,3vw,13px)', margin: 0 }}>
-                {isRtl ? 'אין בקשות כסף עדיין' : 'No money requests yet'}
-              </p>
             )}
           </div>
+        </div>
+
+        {/* Member: my request statuses (only when there are any) */}
+        {!isManager && myRequests.length > 0 && (
+          <Card padding="sm">
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: 'var(--color-ink)' }}>
+              💸 {isRtl ? 'בקשות הכסף שלי' : 'My money requests'}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {myRequests.slice(0, 5).map(r => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: 'clamp(13px,3.5vw,14px)', color: 'var(--color-ink)' }}>₪{r.amount.toFixed(2)}</span>
+                    {r.description && <span style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--color-muted)' }}> · {r.description}</span>}
+                  </div>
+                  <span style={{
+                    padding: '3px 10px', borderRadius: 999, fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700,
+                    background: r.status === 'APPROVED' ? 'var(--color-success-bg)' : r.status === 'DENIED' ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
+                    color: r.status === 'APPROVED' ? 'var(--color-success)' : r.status === 'DENIED' ? 'var(--color-danger)' : 'var(--color-warning)',
+                  }}>
+                    {r.status === 'APPROVED' ? (isRtl ? 'אושר' : 'Approved') : r.status === 'DENIED' ? (isRtl ? 'נדחה' : 'Denied') : (isRtl ? 'ממתין' : 'Pending')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
         )}
 
-        {/* Manager: set rate + adjust balance */}
-        {isManager && (
-          <>
-            {/* Pending money requests */}
-            {pendingRequests.length > 0 && (
-              <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-                <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 14px' }}>
-                  📥 {isRtl ? 'בקשות כסף ממתינות' : 'Pending Money Requests'}
-                  <span style={{ marginInlineStart: 8, background: '#fef3c7', color: '#92400e', borderRadius: 12, padding: '2px 10px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700 }}>
-                    {pendingRequests.length}
-                  </span>
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {pendingRequests.map(r => (
-                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1.5px solid #fde68a', gap: 10 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>
-                          {r.user?.name || r.user?.email || '—'} · <span style={{ color: '#d97706' }}>₪{r.amount.toFixed(2)}</span>
-                        </p>
-                        {r.description && (
-                          <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</p>
-                        )}
-                        <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
-                          {new Date(r.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          onClick={() => handleReviewRequest(r.id, 'APPROVE')}
-                          disabled={reviewingId === r.id}
-                          style={{ background: '#d1fae5', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700, cursor: reviewingId === r.id ? 'not-allowed' : 'pointer', color: '#065f46' }}
-                        >
-                          {isRtl ? 'אשר' : 'Approve'}
-                        </button>
-                        <button
-                          onClick={() => handleReviewRequest(r.id, 'DENY')}
-                          disabled={reviewingId === r.id}
-                          style={{ background: '#fee2e2', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700, cursor: reviewingId === r.id ? 'not-allowed' : 'pointer', color: '#dc2626' }}
-                        >
-                          {isRtl ? 'דחה' : 'Deny'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Rate setting */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-              <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>
-                {t(lang, 'walletRateTitle')}
-              </h2>
-              <p style={{ color: '#6b7280', fontSize: 'clamp(12px,3vw,13px)', margin: '0 0 12px' }}>
-                {t(lang, 'walletRateLabel')(rate)}
-              </p>
-              <form onSubmit={handleSaveRate} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                      {lang === 'he' ? 'שער המרה (₪ לנקודה)' : 'Rate (₪ per point)'}
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={newRate}
-                      onChange={e => setNewRate(e.target.value)}
-                      placeholder="0.10"
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                      {lang === 'he' ? 'מינימום נקודות להמרה' : 'Min points to convert'}
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={newMinPoints}
-                      onChange={e => setNewMinPoints(e.target.value)}
-                      placeholder="300"
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(14px,4vw,16px)', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={savingRate}
-                  style={{ padding: '10px 20px', borderRadius: 10, background: savingRate ? '#d1d5db' : '#1f2937', color: '#fff', fontWeight: 700, border: 'none', cursor: savingRate ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)', alignSelf: 'flex-start' }}
-                >
-                  {savingRate ? t(lang, 'walletRateSaving') : t(lang, 'walletRateSave')}
-                </button>
-              </form>
-            </div>
-
-            {/* Recurring payments */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: 0 }}>
-                  🔁 {isRtl ? 'תשלומים קבועים' : 'Recurring Payments'}
-                </h2>
-                <button
-                  onClick={() => setShowRecurringForm(v => !v)}
-                  style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: '#16a34a', cursor: 'pointer' }}
-                >
-                  {showRecurringForm ? (isRtl ? '✕ סגור' : '✕ Close') : (isRtl ? '+ הוסף' : '+ Add')}
-                </button>
-              </div>
-
-              {/* Add form */}
-              {showRecurringForm && (
-                <form onSubmit={handleSaveRecurring} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16, padding: '14px', background: '#f9fafb', borderRadius: 10 }}>
-                  <select value={rpUserId} onChange={e => setRpUserId(e.target.value)} required
-                    style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
-                    <option value="">{isRtl ? 'בחר חבר...' : 'Select member...'}</option>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name || m.id}</option>)}
-                  </select>
-
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input type="number" min={0.01} step={0.01} placeholder={isRtl ? 'סכום ₪' : 'Amount ₪'} value={rpAmount}
-                      onChange={e => setRpAmount(e.target.value)} required
-                      style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)' }} />
-                    <select value={rpCycleType} onChange={e => { setRpCycleType(e.target.value as 'WEEKLY' | 'MONTHLY'); setRpPayDay('1') }}
-                      style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
-                      <option value="WEEKLY">{isRtl ? 'שבועי' : 'Weekly'}</option>
-                      <option value="MONTHLY">{isRtl ? 'חודשי' : 'Monthly'}</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                      {rpCycleType === 'WEEKLY' ? (isRtl ? 'יום בשבוע' : 'Day of week') : (isRtl ? 'יום בחודש' : 'Day of month')}
-                    </label>
-                    {rpCycleType === 'WEEKLY' ? (
-                      <select value={rpPayDay} onChange={e => setRpPayDay(e.target.value)}
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
-                        {(isRtl
-                          ? ['שני','שלישי','רביעי','חמישי','שישי','שבת','ראשון']
-                          : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-                        ).map((d, i) => <option key={i+1} value={i+1}>{d}</option>)}
-                      </select>
-                    ) : (
-                      <select value={rpPayDay} onChange={e => setRpPayDay(e.target.value)}
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)', background: '#fff' }}>
-                        {Array.from({length: 28}, (_, i) => i+1).map(d => (
-                          <option key={d} value={d}>{isRtl ? `יום ${d}` : `Day ${d}`}</option>
-                        ))}
-                      </select>
+        {/* Manager: pending money requests */}
+        {isManager && pendingRequests.length > 0 && (
+          <Card padding="sm">
+            <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: 'var(--color-ink)' }}>
+              📥 {isRtl ? 'בקשות כסף ממתינות' : 'Pending money requests'}
+              <span style={{ marginInlineStart: 8, background: 'var(--color-warning-bg)', color: 'var(--color-warning)', borderRadius: 12, padding: '2px 10px', fontSize: 'clamp(11px,2.5vw,13px)', fontWeight: 700 }}>
+                {pendingRequests.length}
+              </span>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {pendingRequests.map(r => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--color-warning-bg)', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: 'var(--color-ink)' }}>
+                      {r.user?.name || r.user?.email || '—'} · <span style={{ color: 'var(--color-warning)' }}>₪{r.amount.toFixed(2)}</span>
+                    </p>
+                    {r.description && (
+                      <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--color-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</p>
                     )}
                   </div>
-
-                  <input type="text" placeholder={isRtl ? 'תיאור (אופציונלי)' : 'Description (optional)'} value={rpDesc}
-                    onChange={e => setRpDesc(e.target.value)}
-                    style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,14px)' }} />
-
-                  <button type="submit" disabled={rpSaving}
-                    style={{ padding: '10px 20px', borderRadius: 10, background: rpSaving ? '#d1d5db' : '#16a34a', color: '#fff', fontWeight: 700, border: 'none', cursor: rpSaving ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,14px)' }}>
-                    {rpSaving ? (isRtl ? 'שומר...' : 'Saving...') : (isRtl ? 'שמור תשלום קבוע' : 'Save Recurring Payment')}
-                  </button>
-                </form>
-              )}
-
-              {/* List */}
-              {recurringPayments.length === 0 ? (
-                <p style={{ color: '#9ca3af', fontSize: 'clamp(12px,3vw,13px)', margin: 0 }}>
-                  {isRtl ? 'אין תשלומים קבועים' : 'No recurring payments configured'}
-                </p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {recurringPayments.map(rp => (
-                    <div key={rp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: rp.isActive ? '#f0fdf4' : '#f9fafb', opacity: rp.isActive ? 1 : 0.6, gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(12px,3vw,14px)', color: '#1f2937' }}>
-                          {rp.user?.name || rp.userId} · <span style={{ color: '#16a34a' }}>₪{rp.amount.toFixed(2)}</span>
-                        </p>
-                        <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280' }}>
-                          {rp.cycleType === 'WEEKLY' ? (isRtl ? 'שבועי' : 'Weekly') : (isRtl ? 'חודשי' : 'Monthly')} · {dayLabel(rp.cycleType, rp.payDay)}
-                          {rp.description ? ` · ${rp.description}` : ''}
-                        </p>
-                        <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
-                          {isRtl ? 'הבא:' : 'Next:'} {new Date(rp.nextPayAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => handleToggleRecurring(rp.id, rp.isActive)}
-                          style={{ background: rp.isActive ? '#fef3c7' : '#d1fae5', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, cursor: 'pointer', color: rp.isActive ? '#92400e' : '#065f46' }}>
-                          {rp.isActive ? (isRtl ? 'השהה' : 'Pause') : (isRtl ? 'הפעל' : 'Resume')}
-                        </button>
-                        <button onClick={() => handleDeleteRecurring(rp.id)}
-                          style={{ background: '#fee2e2', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, cursor: 'pointer', color: '#dc2626' }}>
-                          {isRtl ? 'מחק' : 'Delete'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Button size="sm" onClick={() => handleReviewRequest(r.id, 'APPROVE')} disabled={reviewingId === r.id}
+                      style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', boxShadow: 'none' }}>
+                      {isRtl ? 'אשר' : 'Approve'}
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={() => handleReviewRequest(r.id, 'DENY')} disabled={reviewingId === r.id}>
+                      {isRtl ? 'דחה' : 'Deny'}
+                    </Button>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-
-            {/* Adjust balance */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-              <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 12px' }}>
-                {t(lang, 'walletAdjustTitle')}
-              </h2>
-              <form onSubmit={handleAdjust} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <select
-                  aria-label={t(lang, 'walletAdjustMember')}
-                  value={adjustUserId}
-                  onChange={e => setAdjustUserId(e.target.value)}
-                  style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', background: '#fff' }}
-                >
-                  <option value="">{t(lang, 'walletAdjustMember')}...</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name || m.id}</option>
-                  ))}
-                </select>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="number"
-                    min={0.01}
-                    step={0.01}
-                    value={adjustAmount}
-                    onChange={e => setAdjustAmount(e.target.value)}
-                    placeholder={t(lang, 'walletAdjustAmount')}
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', outline: 'none' }}
-                  />
-                  <select
-                    aria-label={t(lang, 'walletAdjustType')}
-                    value={adjustType}
-                    onChange={e => setAdjustType(e.target.value as 'CREDIT' | 'DEBIT')}
-                    style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', background: '#fff' }}
-                  >
-                    <option value="CREDIT">{t(lang, 'walletTxCredit')} +</option>
-                    <option value="DEBIT">{t(lang, 'walletTxDebit')} -</option>
-                  </select>
-                </div>
-
-                <input
-                  type="text"
-                  value={adjustDesc}
-                  onChange={e => setAdjustDesc(e.target.value)}
-                  placeholder={t(lang, 'walletAdjustDesc')}
-                  style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #e5e7eb', fontSize: 'clamp(13px,3.5vw,15px)', outline: 'none' }}
-                />
-
-                <button
-                  type="submit"
-                  disabled={adjusting || !adjustUserId || !adjustAmount}
-                  style={{ padding: '12px', borderRadius: 10, background: adjusting ? '#d1d5db' : '#059669', color: '#fff', fontWeight: 700, border: 'none', cursor: adjusting ? 'not-allowed' : 'pointer', fontSize: 'clamp(13px,3.5vw,15px)' }}
-                >
-                  {adjusting ? t(lang, 'walletAdjusting') : t(lang, 'walletAdjustBtn')}
-                </button>
-              </form>
-            </div>
-          </>
+          </Card>
         )}
 
-        {/* Transaction history */}
-        <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 12px' }}>
-            {t(lang, 'walletHistory')}
-          </h2>
-          {!wallet?.transactions?.length ? (
-            <p style={{ color: '#9ca3af', fontSize: 'clamp(13px,3.5vw,14px)' }}>
+        {/* Manager: family member wallets */}
+        {isManager && memberWallets.length > 0 && (
+          <Card padding="sm">
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: 'var(--color-ink)' }}>
+              {t(lang, 'walletMembersTitle')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {memberWallets.map(mw => (
+                <button
+                  key={mw.id}
+                  onClick={() => { setAdjustAmount(''); setAdjustDesc(''); setSelectedMember(mw.user) }}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface)', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'start', fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: 'clamp(13px,3.5vw,15px)', color: 'var(--color-ink)' }}>
+                    {mw.user.name || mw.user.id}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {mw.availablePoints > 0 && (
+                      <span style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--color-warning)', background: 'var(--color-warning-bg)', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>
+                        ⭐ {mw.availablePoints}
+                      </span>
+                    )}
+                    <span style={{ fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', color: mw.balance > 0 ? 'var(--color-success)' : mw.balance < 0 ? 'var(--color-danger)' : 'var(--color-muted)' }}>
+                      {formatMoney(mw.balance)}
+                    </span>
+                    <span style={{ color: 'var(--color-muted)' }} aria-hidden="true">›</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Recent activity */}
+        <Card padding="sm">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 'clamp(13px,3.5vw,15px)', color: 'var(--color-ink)' }}>
+              {t(lang, 'walletHistory')}
+            </p>
+            {(isManager ? allTransactions.length : (wallet?.transactions?.length ?? 0)) > 5 && (
+              <button
+                onClick={() => setSheet('history')}
+                style={{ background: 'none', border: 'none', color: 'var(--color-brand)', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {isRtl ? 'הצג הכל ›' : 'View all ›'}
+              </button>
+            )}
+          </div>
+          {recentTxs.length === 0 ? (
+            <p style={{ color: 'var(--color-muted)', fontSize: 'clamp(13px,3.5vw,14px)', margin: 0 }}>
               {t(lang, 'walletNoHistory')}
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
-              {wallet.transactions.map(tx => (
-                <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 'clamp(12px,3vw,14px)', color: '#1f2937' }}>
-                      {txLabel(tx.type)}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {tx.description || '—'}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
-                      {new Date(tx.createdAt).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
-                    {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
-                  </span>
-                </div>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {recentTxs.map(tx => <TxRow key={tx.id} tx={tx} who={tx.who} />)}
             </div>
           )}
-        </div>
+        </Card>
 
-        {/* Manager: member wallet balances overview */}
-        {isManager && memberWallets.length > 0 && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-            <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 12px' }}>
-              {t(lang, 'walletMembersTitle')}
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {memberWallets.map(mw => (
-                <div
-                  key={mw.id}
-                  onClick={() => setSelectedMember(mw.user)}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', cursor: 'pointer', transition: 'background 0.15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#f0f9ff')}
-                  onMouseLeave={e => (e.currentTarget.style.background = '#f9fafb')}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: 'clamp(13px,3.5vw,15px)', color: '#1f2937' }}>
-                      {mw.user.name || mw.user.id}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#6b7280' }}>📜</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {mw.availablePoints > 0 && (
-                      <span style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: '#92400e', background: '#fef3c7', borderRadius: 6, padding: '2px 8px', fontWeight: 600 }}>
-                        ⭐ {mw.availablePoints} pts
-                      </span>
-                    )}
-                    <span style={{ fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', color: mw.balance > 0 ? '#16a34a' : mw.balance < 0 ? '#dc2626' : '#6b7280' }}>
-                      {mw.balance < 0 ? '-' : ''}₪{Math.abs(mw.balance).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Manager: all household transactions */}
-        {isManager && allTransactions.length > 0 && (
-          <div style={{ background: '#fff', borderRadius: 16, padding: 'clamp(16px,4vw,24px)', marginBottom: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-            <h2 style={{ fontSize: 'clamp(15px,4vw,18px)', fontWeight: 700, color: '#1f2937', margin: '0 0 12px' }}>
-              {t(lang, 'walletHistory')} — {t(lang, 'walletMembersTitle')}
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>
-              {allTransactions.map(tx => (
-                <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 'clamp(12px,3vw,14px)', color: '#1f2937' }}>
-                      {tx.wallet.user.name || tx.wallet.user.id} · {txLabel(tx.type)}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {tx.description || '—'}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
-                      {new Date(tx.createdAt).toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
-                    {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
+        {/* Manager: tools */}
+        {isManager && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => router.push('/wallet/recurring')} style={{ flex: 1, minWidth: 150 }}>
+              🔁 {isRtl ? 'תשלומים קבועים' : 'Recurring payments'}
+            </Button>
+            <Button variant="secondary" onClick={() => setSheet('rate')} style={{ flex: 1, minWidth: 150 }}>
+              ⚙️ {isRtl ? 'שער המרה ומינימום' : 'Rate & minimum'}
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Member wallet view (balance + history + copy/share) */}
+      {/* ── Convert sheet ── */}
+      <Sheet open={sheet === 'convert'} onClose={() => setSheet(null)} title={t(lang, 'walletConvertTitle')}>
+        {rate <= 0 ? (
+          <p style={{ color: 'var(--color-muted)', fontSize: 'clamp(13px,3.5vw,14px)' }}>{t(lang, 'walletNoRate')}</p>
+        ) : (
+          <form onSubmit={handleConvert} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <span
+                onClick={() => setConvertPoints(String(pointsAvailable))}
+                style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+              >
+                {t(lang, 'walletPointsAvailable')(pointsAvailable)}
+              </span>
+              <span style={{ background: '#ede9fe', color: 'var(--color-brand-deep)', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600 }}>
+                {isRtl ? `מינימום: ${minPoints} נק'` : `Min: ${minPoints} pts`}
+              </span>
+              {maxConvertNis > 0 && (
+                <span style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', borderRadius: 8, padding: '4px 10px', fontSize: 'clamp(12px,3vw,13px)', fontWeight: 600 }}>
+                  {t(lang, 'walletConvertMax')(maxConvertNis)}
+                </span>
+              )}
+            </div>
+            <input
+              type="number"
+              min={minPoints}
+              max={pointsAvailable}
+              value={convertPoints}
+              onChange={e => setConvertPoints(e.target.value)}
+              placeholder={String(minPoints)}
+              style={{ ...inputStyle, borderColor: belowMinimum ? '#fca5a5' : 'var(--color-line)' }}
+            />
+            {belowMinimum && (
+              <p style={{ margin: 0, color: 'var(--color-danger)', fontWeight: 600, fontSize: 'clamp(12px,3vw,13px)' }}>
+                {isRtl ? `נדרש מינימום של ${minPoints} נקודות להמרה` : `Minimum ${minPoints} points required to convert`}
+              </p>
+            )}
+            {convertMsg && (
+              <p style={{ margin: 0, color: 'var(--color-danger)', fontWeight: 600, fontSize: 'clamp(13px,3.5vw,14px)' }}>{convertMsg}</p>
+            )}
+            <Button type="submit" disabled={converting || !convertPoints || belowMinimum || (enteredPoints || 0) <= 0} fullWidth>
+              {converting ? t(lang, 'walletConverting') : t(lang, 'walletConvertBtn')}
+            </Button>
+          </form>
+        )}
+      </Sheet>
+
+      {/* ── Request money sheet (member) ── */}
+      <Sheet open={sheet === 'request'} onClose={() => setSheet(null)} title={isRtl ? '💸 בקשת כסף' : '💸 Request Money'}>
+        <form onSubmit={handleRequestMoney} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input
+            type="number" min={0.01} step={0.01} required
+            placeholder={isRtl ? 'סכום ₪' : 'Amount ₪'}
+            value={requestAmount}
+            onChange={e => setRequestAmount(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            placeholder={isRtl ? 'סיבה / תיאור (אופציונלי)' : 'Reason / description (optional)'}
+            value={requestDesc}
+            onChange={e => setRequestDesc(e.target.value)}
+            style={inputStyle}
+          />
+          {requestMsg && (
+            <p style={{ margin: 0, color: 'var(--color-danger)', fontWeight: 600, fontSize: 'clamp(12px,3vw,13px)' }}>{requestMsg}</p>
+          )}
+          <Button type="submit" disabled={requesting || !requestAmount} fullWidth>
+            {requesting ? (isRtl ? 'שולח...' : 'Sending...') : (isRtl ? 'שלח בקשה' : 'Send Request')}
+          </Button>
+        </form>
+      </Sheet>
+
+      {/* ── Rate settings sheet (manager) ── */}
+      <Sheet open={sheet === 'rate'} onClose={() => setSheet(null)} title={t(lang, 'walletRateTitle')}>
+        <form onSubmit={handleSaveRate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ color: 'var(--color-muted)', fontSize: 'clamp(12px,3vw,13px)', margin: 0 }}>
+            {t(lang, 'walletRateLabel')(rate)}
+          </p>
+          <div>
+            <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--color-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              {isRtl ? 'שער המרה (₪ לנקודה)' : 'Rate (₪ per point)'}
+            </label>
+            <input type="number" min={0} step={0.01} value={newRate} onChange={e => setNewRate(e.target.value)} placeholder="0.10" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--color-muted)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              {isRtl ? 'מינימום נקודות להמרה' : 'Min points to convert'}
+            </label>
+            <input type="number" min={1} step={1} value={newMinPoints} onChange={e => setNewMinPoints(e.target.value)} placeholder="300" style={inputStyle} />
+          </div>
+          <Button type="submit" disabled={savingRate} fullWidth>
+            {savingRate ? t(lang, 'walletRateSaving') : t(lang, 'walletRateSave')}
+          </Button>
+        </form>
+      </Sheet>
+
+      {/* ── Full history sheet ── */}
+      <Sheet open={sheet === 'history'} onClose={() => setSheet(null)} title={t(lang, 'walletHistory')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {(isManager
+            ? allTransactions.map(tx => ({ ...tx, who: tx.wallet.user.name || tx.wallet.user.id }))
+            : (wallet?.transactions ?? []).map(tx => ({ ...tx, who: undefined as string | undefined }))
+          ).map(tx => <TxRow key={tx.id} tx={tx} who={tx.who} />)}
+        </div>
+      </Sheet>
+
+      {/* ── Member detail sheet (manager): balance, adjust, history, copy/share ── */}
       {selectedMember && (() => {
         const memberTxs = allTransactions.filter(tx => tx.wallet.user.id === selectedMember.id)
         const memberWallet = memberWallets.find(mw => mw.user.id === selectedMember.id)
         const memberBalance = memberWallet?.balance ?? 0
         const memberName = selectedMember.name || selectedMember.id
 
-        function formatTxDate(iso: string) {
-          return new Date(iso).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })
-        }
-
         function buildSummaryText() {
-          const balanceStr = `${memberBalance < 0 ? '-' : ''}₪${Math.abs(memberBalance).toFixed(2)}`
           const lines = [
             `💰 ${isRtl ? `ארנק של ${memberName}` : `${memberName}'s Wallet`}`,
-            `${isRtl ? 'יתרה' : 'Balance'}: ${balanceStr}`,
+            `${isRtl ? 'יתרה' : 'Balance'}: ${formatMoney(memberBalance)}`,
           ]
           if (memberTxs.length > 0) {
             lines.push('')
@@ -1033,7 +709,6 @@ export default function WalletPage() {
           try {
             await navigator.clipboard.writeText(text)
           } catch {
-            // Fallback for older browsers / non-secure contexts
             const ta = document.createElement('textarea')
             ta.value = text
             document.body.appendChild(ta)
@@ -1057,90 +732,96 @@ export default function WalletPage() {
         async function cancelTx(txId: string) {
           await fetch(`/api/wallet/transaction/${txId}`, { method: 'DELETE' })
           await fetchData()
-          // Refresh drawer list (re-render via fetchData updating allTransactions)
         }
-        return (
-          <div
-            onClick={() => setSelectedMember(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ width: '100%', maxWidth: 600, margin: '0 auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: 'clamp(20px,5vw,28px)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
-            >
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h2 style={{ margin: 0, fontSize: 'clamp(16px,4.5vw,20px)', fontWeight: 800, color: '#1f2937' }}>
-                  💰 {memberName}
-                </h2>
-                <button
-                  onClick={() => setSelectedMember(null)}
-                  style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 34, height: 34, cursor: 'pointer', fontSize: 18, color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >×</button>
-              </div>
 
-              {/* Balance card */}
-              <div style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: 14, padding: '14px 18px', textAlign: 'center', marginBottom: 12 }}>
+        return (
+          <Sheet open onClose={() => setSelectedMember(null)} title={`💰 ${memberName}`}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Balance */}
+              <div style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: 'var(--radius-sm)', padding: '14px 18px', textAlign: 'center' }}>
                 <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(10px,2.5vw,12px)', fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', margin: '0 0 4px' }}>
                   {t(lang, 'walletBalance')}
                 </p>
                 <p style={{ color: '#fff', fontSize: 'clamp(26px,7vw,36px)', fontWeight: 900, margin: 0, lineHeight: 1 }}>
-                  {memberBalance < 0 ? '-' : ''}₪{Math.abs(memberBalance).toFixed(2)}
+                  {formatMoney(memberBalance)}
                 </p>
               </div>
 
-              {/* Copy / Share actions */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <button
-                  onClick={copySummary}
-                  style={{ flex: 1, padding: '9px 12px', borderRadius: 10, background: summaryCopied ? '#d1fae5' : '#eff6ff', border: `1.5px solid ${summaryCopied ? '#86efac' : '#93c5fd'}`, fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: summaryCopied ? '#065f46' : '#1d4ed8', cursor: 'pointer' }}
-                >
+              {/* Copy / share */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" onClick={copySummary} style={{ flex: 1, color: summaryCopied ? 'var(--color-success)' : undefined }}>
                   {summaryCopied ? (isRtl ? '✓ הועתק!' : '✓ Copied!') : (isRtl ? '📋 העתק סיכום' : '📋 Copy Summary')}
-                </button>
-                <button
-                  onClick={shareSummary}
-                  style={{ flex: 1, padding: '9px 12px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #86efac', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: '#16a34a', cursor: 'pointer' }}
-                >
+                </Button>
+                <Button variant="secondary" onClick={shareSummary} style={{ flex: 1 }}>
                   {isRtl ? '📤 שתף' : '📤 Share'}
-                </button>
+                </Button>
               </div>
 
-              {/* Transactions list */}
-              <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {memberTxs.length === 0 ? (
-                  <p style={{ color: '#9ca3af', textAlign: 'center', padding: '32px 0', fontSize: 'clamp(13px,3.5vw,15px)' }}>
-                    {isRtl ? 'אין עסקאות עדיין' : 'No transactions yet'}
-                  </p>
-                ) : memberTxs.map(tx => (
-                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f9fafb', gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontWeight: 600, fontSize: 'clamp(12px,3vw,14px)', color: '#1f2937' }}>
-                        {txLabel(tx.type)}
-                      </p>
-                      <p style={{ margin: 0, fontSize: 'clamp(11px,2.5vw,12px)', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {tx.description || '—'}
-                      </p>
-                      <p style={{ margin: 0, fontSize: 'clamp(10px,2.5vw,11px)', color: '#9ca3af' }}>
-                        {new Date(tx.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: txColor(tx.type), fontWeight: 800, fontSize: 'clamp(14px,4vw,16px)', whiteSpace: 'nowrap' }}>
-                        {tx.type === 'DEBIT' ? '-' : '+'}₪{tx.amount.toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => cancelTx(tx.id)}
-                        title={isRtl ? 'בטל עסקה' : 'Cancel transaction'}
-                        style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, color: '#dc2626', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      >
-                        {isRtl ? 'בטל' : 'Undo'}
-                      </button>
-                    </div>
+              {/* Adjust balance (folded in from the old standalone form) */}
+              <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
+                <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 'clamp(12px,3.2vw,14px)', color: 'var(--color-ink)' }}>
+                  {t(lang, 'walletAdjustTitle')}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input
+                    type="number" min={0.01} step={0.01}
+                    value={adjustAmount}
+                    onChange={e => setAdjustAmount(e.target.value)}
+                    placeholder={t(lang, 'walletAdjustAmount')}
+                    style={{ ...inputStyle, background: '#fff' }}
+                  />
+                  <input
+                    type="text"
+                    value={adjustDesc}
+                    onChange={e => setAdjustDesc(e.target.value)}
+                    placeholder={t(lang, 'walletAdjustDesc')}
+                    style={{ ...inputStyle, background: '#fff' }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button
+                      onClick={() => handleAdjust('CREDIT')}
+                      disabled={adjusting || !adjustAmount}
+                      style={{ flex: 1, background: 'var(--color-success)', boxShadow: 'none' }}
+                    >
+                      + {t(lang, 'walletTxCredit')}
+                    </Button>
+                    <Button
+                      onClick={() => handleAdjust('DEBIT')}
+                      disabled={adjusting || !adjustAmount}
+                      style={{ flex: 1, background: 'var(--color-danger)', boxShadow: 'none' }}
+                    >
+                      − {t(lang, 'walletTxDebit')}
+                    </Button>
                   </div>
-                ))}
+                </div>
               </div>
+
+              {/* Transactions with undo */}
+              {memberTxs.length === 0 ? (
+                <p style={{ color: 'var(--color-muted)', textAlign: 'center', padding: '20px 0', fontSize: 'clamp(13px,3.5vw,15px)', margin: 0 }}>
+                  {isRtl ? 'אין עסקאות עדיין' : 'No transactions yet'}
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {memberTxs.map(tx => (
+                    <TxRow
+                      key={tx.id}
+                      tx={tx}
+                      trailing={
+                        <button
+                          onClick={() => cancelTx(tx.id)}
+                          aria-label={isRtl ? 'בטל עסקה' : 'Cancel transaction'}
+                          style={{ background: 'var(--color-danger-bg)', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 'clamp(10px,2.5vw,11px)', fontWeight: 700, color: 'var(--color-danger)', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
+                        >
+                          {isRtl ? 'בטל' : 'Undo'}
+                        </button>
+                      }
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          </Sheet>
         )
       })()}
     </div>
