@@ -52,6 +52,18 @@ const t_map = {
     navRankings: 'Rankings',
     navFamily: 'Family',
     navManage: 'Manage',
+    navMore: 'More',
+
+    // ── More hub ─────────────────────────────────────────────
+    moreTitle: 'More',
+    moreSubtitle: 'Management tools and settings',
+    moreManagement: 'Management',
+    moreSettings: 'Settings',
+    moreProductAdmin: 'Product Admin',
+    moreLanguage: 'Language',
+    moreHistoryDesc: 'Who did what, and when',
+    moreManageDesc: 'Categories, activities and points',
+    moreFamilyDesc: 'Members, roles and invites',
 
     // ── Leaderboard ──────────────────────────────────────────
     familyRankings: '🏆 Family Rankings',
@@ -378,6 +390,18 @@ const t_map = {
     navRankings: 'דירוג',
     navFamily: 'משפחה',
     navManage: 'ניהול',
+    navMore: 'עוד',
+
+    // ── More hub ─────────────────────────────────────────────
+    moreTitle: 'עוד',
+    moreSubtitle: 'כלי ניהול והגדרות',
+    moreManagement: 'ניהול',
+    moreSettings: 'הגדרות',
+    moreProductAdmin: 'ניהול מוצר',
+    moreLanguage: 'שפה',
+    moreHistoryDesc: 'מי עשה מה, ומתי',
+    moreManageDesc: 'קטגוריות, פעילויות ונקודות',
+    moreFamilyDesc: 'חברי משפחה, תפקידים והזמנות',
 
     // ── Leaderboard ──────────────────────────────────────────
     familyRankings: '🏆 דירוג משפחתי',

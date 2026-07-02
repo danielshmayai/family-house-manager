@@ -1,11 +1,38 @@
 :root{
-  --bg:#fff7f0;
+  /* ── Design tokens: the single source of truth for new UI code ── */
+  --color-brand:#667eea;
+  --color-brand-deep:#764ba2;
+  --gradient-brand:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  --color-ink:#1F2937;
+  --color-muted:#6B7280;
+  --color-line:#E5E7EB;
+  --color-surface:#F6F6FA;
+  --color-card:#FFFFFF;
+  --color-success:#059669;
+  --color-success-bg:#ECFDF5;
+  --color-danger:#DC2626;
+  --color-danger-bg:#FEE2E2;
+  --color-warning:#B45309;
+  --color-warning-bg:#FEF3C7;
+  --radius-sm:10px;
+  --radius-md:16px;
+  --radius-lg:24px;
+  --shadow-card:0 2px 12px rgba(31,41,55,0.08);
+  --shadow-float:0 8px 24px rgba(31,41,55,0.14);
+  --nav-clearance:84px;
+  --page-max-width:640px;
+
+  /* legacy vars kept for older classes below — do not use in new code */
+  --bg:var(--color-surface);
   --accent:#ff7a7a;
   --muted:#666;
 }
 html,body,#__next{height:100%;}
 .app-shell{max-width:600px;margin:0 auto;box-shadow:0 12px 40px rgba(0,0,0,0.08);min-height:100vh;background:#F9FAFB}
-body{font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); margin:0}
+body{font-family: var(--font-app, system-ui), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); margin:0}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
+}
 main{padding:12px}
 .category{margin-bottom:18px}
 .category-header{display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:14px;color:#fff;margin-bottom:10px}

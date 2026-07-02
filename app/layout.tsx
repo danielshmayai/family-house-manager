@@ -1,11 +1,20 @@
 import './globals.css'
 import React from 'react'
+import { Heebo } from 'next/font/google'
 import Providers from '../components/Providers'
 import BottomNav from '../components/BottomNav'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../lib/auth'
 import { cookies } from 'next/headers'
 import type { Lang } from '../lib/i18n'
+
+// Heebo covers Hebrew + Latin in one family; exposed as --font-app for globals.css
+const heebo = Heebo({
+  subsets: ['hebrew', 'latin'],
+  weight: ['400', '600', '700', '800', '900'],
+  variable: '--font-app',
+  display: 'swap',
+})
 
 export const metadata = {
   title: 'Family House Manager',
@@ -32,7 +41,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: '#1a56db',
+  themeColor: '#667eea',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -45,7 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dir = lang === 'he' ? 'rtl' : 'ltr'
 
   return (
-    <html lang={lang} dir={dir} suppressHydrationWarning>
+    <html lang={lang} dir={dir} className={heebo.variable} suppressHydrationWarning>
       <head>
         {/* viewport, manifest, icons, theme-color, appleWebApp are all declared via
             the metadata/viewport exports above — Next.js injects them automatically.
@@ -65,7 +74,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body style={{ margin: 0, padding: 0, overflowX: 'hidden' }} suppressHydrationWarning>
         <Providers session={session} defaultLang={lang}>
-          <main style={{ minHeight: '100vh', padding: 0, paddingBottom: '72px' }}>{children}</main>
+          <main style={{ minHeight: '100vh', padding: 0, paddingBottom: 'var(--nav-clearance)' }}>{children}</main>
           <BottomNav />
         </Providers>
       </body>

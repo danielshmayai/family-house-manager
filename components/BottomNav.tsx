@@ -8,7 +8,7 @@ import { t } from '@/lib/i18n'
 const AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/setup']
 
 export default function BottomNav() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const { lang } = useLang()
@@ -16,21 +16,15 @@ export default function BottomNav() {
   if (status !== 'authenticated') return null
   if (pathname && AUTH_PATHS.some(p => pathname.startsWith(p))) return null
 
-  const sessionUser = session?.user as any
-  const isManager = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
-  const isProductAdmin = sessionUser?.email === (process.env.NEXT_PUBLIC_PRODUCT_ADMIN_EMAIL || 'danielshmayai@gmail.com')
+  // Routes reached via the More hub — they light up the More tab
+  const MORE_PATHS = ['/more', '/users', '/history', '/admin', '/product-admin']
 
   const links = [
     { path: '/', icon: '🏠', labelKey: 'navHome' as const },
     { path: '/my-tasks', icon: '✅', labelKey: 'navMyTasks' as const },
     { path: '/wallet', icon: '💰', labelKey: 'navWallet' as const },
     { path: '/leaderboard', icon: '🏆', labelKey: 'navRankings' as const },
-    { path: '/users', icon: '👥', labelKey: 'navFamily' as const },
-    ...(isManager ? [
-      { path: '/history', icon: '📜', labelKey: 'navHistory' as const },
-      { path: '/admin', icon: '⚙️', labelKey: 'navManage' as const },
-    ] : []),
-    ...(isProductAdmin ? [{ path: '/product-admin', icon: '🛡️', labelKey: 'navHome' as const, label: 'ניהול' }] : []),
+    { path: '/more', icon: '☰', labelKey: 'navMore' as const },
   ]
 
   return (
@@ -45,7 +39,11 @@ export default function BottomNav() {
         display: 'flex', justifyContent: 'space-around', alignItems: 'center',
       }}>
         {links.map(item => {
-          const isActive = item.path === '/' ? pathname === '/' : (pathname ?? '').startsWith(item.path)
+          const isActive = item.path === '/'
+            ? pathname === '/'
+            : item.path === '/more'
+              ? MORE_PATHS.some(p => (pathname ?? '').startsWith(p))
+              : (pathname ?? '').startsWith(item.path)
           return (
             <button
               key={item.path}
@@ -55,7 +53,7 @@ export default function BottomNav() {
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
                 padding: 'clamp(4px, 1.5vw, 6px) clamp(6px, 2vw, 14px)',
                 minHeight: '48px', minWidth: '48px',
-                color: isActive ? '#1a56db' : '#9CA3AF',
+                color: isActive ? 'var(--color-brand)' : '#9CA3AF',
                 fontWeight: isActive ? '800' : '600',
                 fontSize: 'clamp(10px, 2.5vw, 12px)',
                 WebkitTapHighlightColor: 'transparent',
@@ -65,11 +63,11 @@ export default function BottomNav() {
               {isActive && (
                 <span style={{
                   position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                  width: '24px', height: '3px', background: '#1a56db', borderRadius: '0 0 3px 3px',
+                  width: '24px', height: '3px', background: 'var(--color-brand)', borderRadius: '0 0 3px 3px',
                 }} />
               )}
               <span style={{ fontSize: 'clamp(20px, 5vw, 24px)' }}>{item.icon}</span>
-              {(item as any).label || t(lang, item.labelKey)}
+              {t(lang, item.labelKey)}
             </button>
           )
         })}
