@@ -113,6 +113,7 @@ export default function WalletPage() {
 
   // Manager: member transaction drawer
   const [selectedMember, setSelectedMember] = useState<{ id: string; name: string | null } | null>(null)
+  const [summaryCopied, setSummaryCopied] = useState(false)
 
   // Wallet requests
   const [myRequests, setMyRequests] = useState<WalletRequest[]>([])
@@ -995,9 +996,64 @@ export default function WalletPage() {
         )}
       </div>
 
-      {/* Member transaction drawer */}
+      {/* Member wallet view (balance + history + copy/share) */}
       {selectedMember && (() => {
         const memberTxs = allTransactions.filter(tx => tx.wallet.user.id === selectedMember.id)
+        const memberWallet = memberWallets.find(mw => mw.user.id === selectedMember.id)
+        const memberBalance = memberWallet?.balance ?? 0
+        const memberName = selectedMember.name || selectedMember.id
+
+        function formatTxDate(iso: string) {
+          return new Date(iso).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jerusalem' })
+        }
+
+        function buildSummaryText() {
+          const balanceStr = `${memberBalance < 0 ? '-' : ''}₪${Math.abs(memberBalance).toFixed(2)}`
+          const lines = [
+            `💰 ${isRtl ? `ארנק של ${memberName}` : `${memberName}'s Wallet`}`,
+            `${isRtl ? 'יתרה' : 'Balance'}: ${balanceStr}`,
+          ]
+          if (memberTxs.length > 0) {
+            lines.push('')
+            lines.push(isRtl ? '📜 היסטוריית עסקאות:' : '📜 Transaction history:')
+            for (const tx of memberTxs.slice(0, 20)) {
+              const sign = tx.type === 'DEBIT' ? '-' : '+'
+              const desc = tx.description ? ` · ${tx.description}` : ''
+              lines.push(`${sign}₪${tx.amount.toFixed(2)} · ${txLabel(tx.type)}${desc} · ${formatTxDate(tx.createdAt)}`)
+            }
+            if (memberTxs.length > 20) {
+              lines.push(isRtl ? `…ועוד ${memberTxs.length - 20} עסקאות` : `…and ${memberTxs.length - 20} more`)
+            }
+          }
+          return lines.join('\n')
+        }
+
+        async function copySummary() {
+          const text = buildSummaryText()
+          try {
+            await navigator.clipboard.writeText(text)
+          } catch {
+            // Fallback for older browsers / non-secure contexts
+            const ta = document.createElement('textarea')
+            ta.value = text
+            document.body.appendChild(ta)
+            ta.select()
+            document.execCommand('copy')
+            document.body.removeChild(ta)
+          }
+          setSummaryCopied(true)
+          setTimeout(() => setSummaryCopied(false), 2000)
+        }
+
+        async function shareSummary() {
+          const text = buildSummaryText()
+          if (navigator.share) {
+            try { await navigator.share({ text }) } catch { /* user cancelled */ }
+          } else {
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+          }
+        }
+
         async function cancelTx(txId: string) {
           await fetch(`/api/wallet/transaction/${txId}`, { method: 'DELETE' })
           await fetchData()
@@ -1010,17 +1066,43 @@ export default function WalletPage() {
           >
             <div
               onClick={e => e.stopPropagation()}
-              style={{ width: '100%', maxWidth: 600, margin: '0 auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: 'clamp(20px,5vw,28px)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+              style={{ width: '100%', maxWidth: 600, margin: '0 auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: 'clamp(20px,5vw,28px)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
             >
               {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h2 style={{ margin: 0, fontSize: 'clamp(16px,4.5vw,20px)', fontWeight: 800, color: '#1f2937' }}>
-                  💰 {selectedMember.name || selectedMember.id}
+                  💰 {memberName}
                 </h2>
                 <button
                   onClick={() => setSelectedMember(null)}
                   style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 34, height: 34, cursor: 'pointer', fontSize: 18, color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >×</button>
+              </div>
+
+              {/* Balance card */}
+              <div style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: 14, padding: '14px 18px', textAlign: 'center', marginBottom: 12 }}>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(10px,2.5vw,12px)', fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', margin: '0 0 4px' }}>
+                  {t(lang, 'walletBalance')}
+                </p>
+                <p style={{ color: '#fff', fontSize: 'clamp(26px,7vw,36px)', fontWeight: 900, margin: 0, lineHeight: 1 }}>
+                  {memberBalance < 0 ? '-' : ''}₪{Math.abs(memberBalance).toFixed(2)}
+                </p>
+              </div>
+
+              {/* Copy / Share actions */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <button
+                  onClick={copySummary}
+                  style={{ flex: 1, padding: '9px 12px', borderRadius: 10, background: summaryCopied ? '#d1fae5' : '#eff6ff', border: `1.5px solid ${summaryCopied ? '#86efac' : '#93c5fd'}`, fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: summaryCopied ? '#065f46' : '#1d4ed8', cursor: 'pointer' }}
+                >
+                  {summaryCopied ? (isRtl ? '✓ הועתק!' : '✓ Copied!') : (isRtl ? '📋 העתק סיכום' : '📋 Copy Summary')}
+                </button>
+                <button
+                  onClick={shareSummary}
+                  style={{ flex: 1, padding: '9px 12px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #86efac', fontWeight: 700, fontSize: 'clamp(12px,3vw,13px)', color: '#16a34a', cursor: 'pointer' }}
+                >
+                  {isRtl ? '📤 שתף' : '📤 Share'}
+                </button>
               </div>
 
               {/* Transactions list */}
