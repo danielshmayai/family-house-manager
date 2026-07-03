@@ -15,22 +15,22 @@ const STEPS: Step[] = [
     emoji: '🏠',
     titleEn: 'Create Your Family',
     titleHe: 'צרו את המשפחה שלכם',
-    descEn: 'Register and set up your household. Invite family members via the Family tab — each person gets their own account and profile.',
-    descHe: 'הירשמו והגדירו את משק הבית שלכם. הזמינו בני משפחה דרך לשונית המשפחה — לכל אחד חשבון ופרופיל אישי.',
+    descEn: 'Register and set up your household. Invite family members from More → Family — each person gets their own account and profile.',
+    descHe: 'הירשמו והגדירו את משק הבית שלכם. הזמינו בני משפחה דרך עוד ← משפחה — לכל אחד חשבון ופרופיל אישי.',
   },
   {
     emoji: '📋',
     titleEn: 'Configure Categories & Activities',
     titleHe: 'הגדירו קטגוריות ופעילויות',
-    descEn: 'Go to Admin → set up categories (e.g. Chores, School, Sports) and add activities under each one. You can customise points, icons, and frequencies.',
-    descHe: 'עברו לניהול → הגדירו קטגוריות (למשל: בית, לימודים, ספורט) והוסיפו פעילויות לכל קטגוריה. ניתן להתאים נקודות, אייקונים ותדירות.',
+    descEn: 'Go to More → Manage and set up categories (e.g. Chores, School, Sports) with activities under each one. You can customise points, icons, and frequencies.',
+    descHe: 'עברו לעוד ← ניהול והגדירו קטגוריות (למשל: בית, לימודים, ספורט) עם פעילויות לכל קטגוריה. ניתן להתאים נקודות, אייקונים ותדירות.',
   },
   {
     emoji: '✅',
     titleEn: 'Assign Tasks',
     titleHe: 'הקצו משימות',
-    descEn: 'Use the Tasks section to assign specific activities to family members with due dates. Everyone sees their personal task list and gets notified.',
-    descHe: 'השתמשו בלשונית המשימות כדי להקצות פעילויות לבני המשפחה עם תאריכי יעד. כל אחד רואה את רשימת המשימות שלו ומקבל הודעות.',
+    descEn: 'Use the Tasks tab to assign specific activities to family members. Everyone sees their personal task list, and completing all manager tasks earns a bonus.',
+    descHe: 'השתמשו בלשונית המשימות כדי להקצות פעילויות לבני המשפחה. כל אחד רואה את רשימת המשימות שלו, והשלמת כל משימות המנהל מזכה בבונוס.',
   },
   {
     emoji: '⭐',
@@ -43,24 +43,25 @@ const STEPS: Step[] = [
     emoji: '🏆',
     titleEn: 'Climb the Leaderboard',
     titleHe: 'עלו בדירוג',
-    descEn: 'Points accumulate in real time. Check the Leaderboard to see who\'s on top — daily, weekly, or all-time. A little healthy competition never hurts!',
-    descHe: 'הנקודות מצטברות בזמן אמת. בדקו את הדירוג כדי לראות מי מוביל — יומי, שבועי, או כל הזמנים. קצת תחרות בריאה אף פעם לא הזיקה!',
+    descEn: 'Points accumulate in real time. Check the Rankings tab to see who\'s on top — daily, weekly, or all-time. A little healthy competition never hurts!',
+    descHe: 'הנקודות מצטברות בזמן אמת. בדקו את לשונית הדירוג כדי לראות מי מוביל — יומי, שבועי, או כל הזמנים. קצת תחרות בריאה אף פעם לא הזיקה!',
   },
   {
     emoji: '💰',
     titleEn: 'Turn Points into Money',
     titleHe: 'הפכו נקודות לכסף',
-    descEn: 'Every member has a personal wallet. Once the manager sets a points-to-₪ rate, you can convert your earned points into real balance — with a satisfying coin animation!',
-    descHe: 'לכל חבר ארנק אישי. ברגע שהמנהל קובע שער המרה, ניתן להמיר נקודות שנצברו ליתרה אמיתית — עם אנימציית מטבעות מספקת!',
+    descEn: 'Every member has a personal wallet. Convert earned points to ₪, request money from the manager, and managers can set an automatic weekly or monthly allowance. Tap a member to see and share their money history.',
+    descHe: 'לכל חבר ארנק אישי. המירו נקודות לשקלים, בקשו כסף מהמנהל, ומנהלים יכולים לקבוע דמי כיס אוטומטיים שבועיים או חודשיים. הקישו על בן משפחה לצפייה ושיתוף של היסטוריית הכסף.',
   },
 ]
 
 const FEATURES = [
   { emoji: '📊', en: 'Full activity history', he: 'היסטוריית פעילות מלאה' },
-  { emoji: '💰', en: 'Personal wallet — convert points to ₪', he: 'ארנק אישי — המרת נקודות לשקלים' },
+  { emoji: '💸', en: 'Money requests with manager approval', he: 'בקשות כסף עם אישור מנהל' },
+  { emoji: '🔁', en: 'Automatic weekly / monthly allowance', he: 'דמי כיס אוטומטיים — שבועי / חודשי' },
+  { emoji: '📤', en: 'Share a member\'s wallet summary to WhatsApp', he: 'שיתוף סיכום ארנק לוואטסאפ' },
   { emoji: '⭐', en: 'Custom point rewards on tasks', he: 'נקודות מותאמות אישית למשימות' },
   { emoji: '🌐', en: 'English & Hebrew', he: 'אנגלית ועברית' },
-  { emoji: '🖼️', en: 'Custom icons & gallery images', he: 'אייקונים ותמונות מותאמות' },
 ]
 
 type Props = {

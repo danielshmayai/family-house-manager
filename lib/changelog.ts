@@ -14,6 +14,20 @@ export type ChangelogVersion = {
 
 export const CHANGELOG: ChangelogVersion[] = [
   {
+    version: '2.0.0',
+    date: '2026-07-03',
+    changes: [
+      { type: 'new',      en: 'Fresh design — new font, one clean look on every screen, and a simpler 5-tab navigation with a More tab for management tools and settings', he: 'עיצוב מחודש — פונט חדש, מראה אחיד בכל המסכים וניווט פשוט של 5 לשוניות עם לשונית "עוד" לכלי ניהול והגדרות' },
+      { type: 'new',      en: 'Request money — members can ask for money from their wallet; the manager approves or denies with one tap', he: 'בקשת כסף — חברי משפחה יכולים לבקש כסף מהארנק; המנהל מאשר או דוחה בלחיצה אחת' },
+      { type: 'new',      en: 'Recurring payments — set an automatic weekly or monthly allowance for any family member', he: 'תשלומים קבועים — קבעו דמי כיס אוטומטיים, שבועיים או חודשיים, לכל בן משפחה' },
+      { type: 'new',      en: 'Tap a member in the wallet to see their balance and full money history — copy or share it straight to WhatsApp', he: 'הקישו על בן משפחה בארנק לצפייה ביתרה ובהיסטוריית הכסף המלאה — העתיקו או שתפו ישירות לוואטסאפ' },
+      { type: 'new',      en: 'Minimum points for conversion (manager-configurable) and support for negative balances with transaction undo', he: 'מינימום נקודות להמרה (בקביעת המנהל) ותמיכה ביתרה שלילית עם ביטול עסקאות' },
+      { type: 'improved', en: 'Wallet opens to what matters: balance, pending requests, family list and recent activity — everything else is one tap away', he: 'הארנק נפתח למה שחשוב: יתרה, בקשות ממתינות, רשימת המשפחה ופעילות אחרונה — כל השאר במרחק הקשה אחת' },
+      { type: 'improved', en: 'All confirmations now use polished in-app dialogs instead of browser popups', he: 'כל האישורים משתמשים כעת בחלונות מעוצבים בתוך האפליקציה במקום חלונות דפדפן' },
+      { type: 'fix',      en: 'All times now display in Israel time', he: 'כל השעות מוצגות כעת לפי שעון ישראל' },
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-03-28',
     changes: [
