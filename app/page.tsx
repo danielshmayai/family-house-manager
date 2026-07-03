@@ -1,11 +1,10 @@
 "use client"
 import React, { useEffect, useState, useCallback } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import IconDisplay from '@/components/IconDisplay'
 import LanguageToggle from '@/components/LanguageToggle'
 import WhatsNewModal from '@/components/WhatsNewModal'
-import WelcomeModal from '@/components/WelcomeModal'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import { compressImage } from '@/lib/compressImage'
@@ -69,7 +68,6 @@ export default function HomePage() {
   const [householdMembers, setHouseholdMembers] = useState<FamilyMember[]>([])
   const [proxyUserId, setProxyUserId] = useState<string | null>(null)
   const [showWhatsNew, setShowWhatsNew] = useState(false)
-  const [showWelcome, setShowWelcome] = useState(false)
 
   const sessionUser = session?.user as any
   const householdId = sessionUser?.householdId
@@ -340,67 +338,6 @@ export default function HomePage() {
                     </div>
                   ) : null
                 })()}
-              </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-                <div style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  borderRadius: '14px',
-                  padding: '10px 14px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: '800', lineHeight: 1 }}>{totalPointsToday}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: '700', marginTop: '2px' }}>{t(lang, 'ptsToday')}</div>
-                </div>
-                <LanguageToggle />
-                <button
-                  onClick={() => setShowWelcome(true)}
-                  title="Help / Welcome"
-                  style={{
-                    padding: '10px 14px',
-                    background: 'rgba(255,255,255,0.2)',
-                    border: '2px solid rgba(255,255,255,0.4)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontSize: 'clamp(12px, 3vw, 14px)',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  ❓
-                </button>
-                <button
-                  onClick={() => setShowWhatsNew(true)}
-                  style={{
-                    padding: '10px 14px',
-                    background: 'rgba(255,255,255,0.2)',
-                    border: '2px solid rgba(255,255,255,0.4)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontSize: 'clamp(12px, 3vw, 14px)',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  🎉
-                </button>
-                <button
-                  onClick={async () => { await signOut({ redirect: false }); window.location.href = '/auth/login' }}
-                  style={{
-                    padding: '10px 14px',
-                    background: 'rgba(255,255,255,0.2)',
-                    border: '2px solid rgba(255,255,255,0.4)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontSize: 'clamp(12px, 3vw, 14px)',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  {t(lang, 'signOut')}
-                </button>
               </div>
             </div>
           )}
@@ -1111,8 +1048,6 @@ export default function HomePage() {
         }} />
       )}
 
-      {/* ─── Welcome / Help Modal ─── */}
-      {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   )
 }

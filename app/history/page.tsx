@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
+import Sheet from '@/components/ui/Sheet'
+import Button from '@/components/ui/Button'
 
 type EventItem = {
   id: string
@@ -126,6 +128,7 @@ export default function HistoryPage() {
   const [detailModal, setDetailModal] = useState<EventItem | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [reverting, setReverting] = useState<string | null>(null)
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
 
   const sessionUser = session?.user as any
   const isManagerOrAdmin = sessionUser?.role === 'ADMIN' || sessionUser?.role === 'MANAGER'
@@ -218,6 +221,7 @@ export default function HistoryPage() {
   )
   const grouped = useMemo(() => groupByDay(events, lang), [events, lang])
   const totalPoints = useMemo(() => events.reduce((s, e) => s + e.points, 0), [events])
+  const activeFilterCount = [filterUser, filterCategory, filterActivity].filter(Boolean).length
 
   if (status === 'loading' || loading) {
     return (
@@ -273,32 +277,30 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        {/* ── Filters ── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(160px, 100%), 1fr))',
-          gap: '8px', marginBottom: '16px',
-        }}>
-          <select value={filterUser} onChange={e => setFilterUser(e.target.value)}
-            style={selectStyle}>
-            <option value="">{isHe ? '👤 כל המשתמשים' : '👤 All users'}</option>
-            {members.map(m => (
-              <option key={m.id} value={m.id}>{m.name || m.email}</option>
-            ))}
-          </select>
-          <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setFilterActivity('') }}
-            style={selectStyle}>
-            <option value="">{isHe ? '📁 כל הקטגוריות' : '📁 All categories'}</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{isImageIcon(c.icon) ? '📁' : (c.icon || '📁')} {c.name}</option>
-            ))}
-          </select>
-          <select value={filterActivity} onChange={e => setFilterActivity(e.target.value)}
-            style={selectStyle}>
-            <option value="">{isHe ? '⭐ כל הפעילויות' : '⭐ All activities'}</option>
-            {filteredActivities.map(a => (
-              <option key={a.id} value={a.id}>{isImageIcon(a.icon) ? '⭐' : (a.icon || '⭐')} {a.name}</option>
-            ))}
-          </select>
+        {/* ── Filter button + inline stats ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowFilterSheet(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '9px 16px', borderRadius: '12px',
+              background: activeFilterCount > 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+              color: activeFilterCount > 0 ? 'white' : '#374151',
+              border: activeFilterCount > 0 ? 'none' : '2px solid #E5E7EB',
+              fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: '700', cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent', fontFamily: 'inherit',
+            }}
+          >
+            ⚙ {isHe ? 'סינון' : 'Filter'}
+            {activeFilterCount > 0 && (
+              <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: '999px', padding: '1px 8px', fontSize: '11px', fontWeight: '800' }}>
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <span style={{ fontSize: 'clamp(12px, 3.2vw, 14px)', color: '#6B7280', fontWeight: '600' }}>
+            📋 {total} {isHe ? 'פעילויות' : 'activities'} · ⭐ {totalPoints} · 👥 {perUser.length}
+          </span>
         </div>
 
         {/* ── Error banner ── */}
@@ -318,28 +320,6 @@ export default function HistoryPage() {
             </button>
           </div>
         )}
-
-        {/* ── Summary Cards ── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '10px', marginBottom: '20px',
-        }}>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: '24px' }}>📋</div>
-            <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: '900', color: '#1F2937' }}>{total}</div>
-            <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: '600' }}>{isHe ? 'פעילויות' : 'Activities'}</div>
-          </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: '24px' }}>⭐</div>
-            <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: '900', color: '#1F2937' }}>{totalPoints}</div>
-            <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: '600' }}>{isHe ? 'נקודות' : 'Points'}</div>
-          </div>
-          <div style={summaryCardStyle}>
-            <div style={{ fontSize: '24px' }}>👥</div>
-            <div style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: '900', color: '#1F2937' }}>{perUser.length}</div>
-            <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: '600' }}>{isHe ? 'משתתפים' : 'Participants'}</div>
-          </div>
-        </div>
 
         {/* ── View Tabs ── */}
         <div style={{
@@ -731,6 +711,54 @@ export default function HistoryPage() {
         </div>
       )}
 
+      {/* ── Filter Sheet ── */}
+      <Sheet open={showFilterSheet} onClose={() => setShowFilterSheet(false)} title={isHe ? '⚙ סינון' : '⚙ Filter'}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: '12px', color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              {isHe ? 'משתמש' : 'User'}
+            </label>
+            <select value={filterUser} onChange={e => setFilterUser(e.target.value)} style={selectStyle}>
+              <option value="">{isHe ? '👤 כל המשתמשים' : '👤 All users'}</option>
+              {members.map(m => (
+                <option key={m.id} value={m.id}>{m.name || m.email}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              {isHe ? 'קטגוריה' : 'Category'}
+            </label>
+            <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setFilterActivity('') }} style={selectStyle}>
+              <option value="">{isHe ? '📁 כל הקטגוריות' : '📁 All categories'}</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{isImageIcon(c.icon) ? '📁' : (c.icon || '📁')} {c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: '#6B7280', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+              {isHe ? 'פעילות' : 'Activity'}
+            </label>
+            <select value={filterActivity} onChange={e => setFilterActivity(e.target.value)} style={selectStyle}>
+              <option value="">{isHe ? '⭐ כל הפעילויות' : '⭐ All activities'}</option>
+              {filteredActivities.map(a => (
+                <option key={a.id} value={a.id}>{isImageIcon(a.icon) ? '⭐' : (a.icon || '⭐')} {a.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {activeFilterCount > 0 && (
+              <Button variant="secondary" onClick={() => { setFilterUser(''); setFilterCategory(''); setFilterActivity('') }} style={{ flex: 1 }}>
+                {isHe ? 'נקה סינון' : 'Clear filters'}
+              </Button>
+            )}
+            <Button onClick={() => setShowFilterSheet(false)} style={{ flex: 1 }}>
+              {isHe ? 'סגור' : 'Done'}
+            </Button>
+          </div>
+        </div>
+      </Sheet>
     </div>
   )
 }
@@ -758,13 +786,4 @@ const selectStyle: React.CSSProperties = {
   outline: 'none',
   boxSizing: 'border-box' as const,
   width: '100%',
-}
-
-const summaryCardStyle: React.CSSProperties = {
-  background: 'white',
-  borderRadius: '14px',
-  padding: 'clamp(12px, 3vw, 16px)',
-  textAlign: 'center' as const,
-  border: '2px solid #E5E7EB',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
 }

@@ -98,7 +98,7 @@ export default function Admin() {
       setShowCategoryModal(false)
       setEditingCategory(null)
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
     }
   }
 
@@ -112,12 +112,14 @@ export default function Admin() {
       if (!res.ok) throw new Error('Failed to delete')
       const result = await res.json()
       const info = result.cascaded
-        ? `Deleted! (${result.cascaded.activitiesDeleted} activities, ${result.cascaded.eventsDeleted} events removed)`
-        : 'Deleted!' // generic server result, not translated
+        ? (lang === 'he'
+            ? `נמחק! (הוסרו ${result.cascaded.activitiesDeleted} פעילויות ו-${result.cascaded.eventsDeleted} אירועים)`
+            : `Deleted! (${result.cascaded.activitiesDeleted} activities, ${result.cascaded.eventsDeleted} events removed)`)
+        : (lang === 'he' ? 'נמחק!' : 'Deleted!')
       alert(info)
       await loadCategories()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
     }
   }
 
@@ -143,7 +145,7 @@ export default function Admin() {
       setShowActivityModal(false)
       setEditingActivity(null)
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
     }
   }
 
@@ -156,12 +158,14 @@ export default function Admin() {
       if (!res.ok) throw new Error('Failed to delete')
       const result = await res.json()
       const info = result.cascaded
-        ? `Deleted! (${result.cascaded.eventsDeleted} events removed)`
-        : 'Deleted!'
+        ? (lang === 'he'
+            ? `נמחק! (הוסרו ${result.cascaded.eventsDeleted} אירועים)`
+            : `Deleted! (${result.cascaded.eventsDeleted} events removed)`)
+        : (lang === 'he' ? 'נמחק!' : 'Deleted!')
       alert(info)
       await loadCategories()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
     }
   }
 
@@ -184,7 +188,7 @@ export default function Admin() {
       await loadCategories()
       alert(t(lang, 'resetSuccess'))
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
     } finally {
       setResetting(false)
     }
@@ -226,7 +230,7 @@ export default function Admin() {
 
   async function handleImageUpload(file: File, target: 'category' | 'activity') {
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (PNG, JPG, GIF, SVG, WebP)')
+      alert(lang === 'he' ? 'יש לבחור קובץ תמונה (PNG, JPG, GIF, SVG, WebP)' : 'Please select an image file (PNG, JPG, GIF, SVG, WebP)')
       return
     }
     const dataUri = await compressImage(file)

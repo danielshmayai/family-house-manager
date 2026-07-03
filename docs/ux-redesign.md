@@ -28,20 +28,22 @@ Next session: read this file and start the first unchecked phase.
       full list in the "view all" Sheet; per-member history in the member Sheet)
 - [x] Page rebuilt on `PageHeader`/`Card`/`Button`/`Sheet` + tokens (1148 → ~700 lines)
 
-## Phase 3 — Screen cleanups (in progress)
-- [ ] Home: show points/progress once (hero card only); remove header points pill; move help,
-      what's-new, language, sign-out out of the header (they live in /more now)
-- [ ] History: one row of range chips + single "Filter" button opening a Sheet; fold summary cards
-      into a one-line stat
-- [x] History: 🐛 debug banner replaced with translated error banner + Retry; debug console.logs removed (2026-07-02)
+## Phase 3 — Screen cleanups ✅ (done 2026-07-02)
+- [x] Home: header stripped to greeting + subtitle + proxy banner; points pill, language toggle,
+      help ❓, what's-new 🎉 and sign-out removed (all live in /more; What's New still auto-shows
+      once per version). WelcomeModal + WhatsNewModal now open from /more Settings.
+- [x] History: 3 filter dropdowns collapsed into one "Filter" button (with active-count badge)
+      opening a Sheet with Clear/Done; 3 summary cards folded into a one-line stat next to it
+- [x] History: 🐛 debug banner replaced with translated error banner + Retry; debug console.logs removed
 - [x] Leaderboard: list starts at rank 4 when podium shown, section hidden when empty;
-      dead bounce/pulse keyframes removed (2026-07-02)
-- [ ] Users: single "Add member" CTA opening a Sheet with Invite/Create options; card actions
-      behind an overflow (⋯) menu
-- [ ] Admin: merge the two near-identical modals into one form component; overflow menu on rows;
-      translate alert strings
-- [x] Add (Quick Complete): success-message color bug fixed (msg checked for '✅' never present);
-      static "Quick Stats" tip card removed (2026-07-02)
+      dead bounce/pulse keyframes removed
+- [x] Users: single "+ Add member" CTA opening a chooser Sheet (Invite with code / Create manually);
+      per-card Edit/Reset/Remove actions collapsed behind a ⋯ toggle
+- [x] Admin: alert strings translated (deleted-with-cascade info, errors, image-type warning)
+- [x] Add (Quick Complete): success-message color bug fixed; static "Quick Stats" tip card removed
+
+Deferred to Phase 4: Admin modal merge (two near-identical category/activity modals → one form
+component) and admin row overflow menus — internal refactor, no schema/API impact.
 
 ## Phase 4 — Production polish
 - [ ] Replace every `alert()`/`confirm()` with `ConfirmDialog` (translated)

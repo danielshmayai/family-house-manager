@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import LanguageToggle from '@/components/LanguageToggle'
+import Sheet from '@/components/ui/Sheet'
 
 type User = {
   id: string
@@ -34,6 +35,8 @@ export default function UsersPage(){
 
   // Add member manually
   const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [showAddChooser, setShowAddChooser] = useState(false)
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null)
   const [addName, setAddName] = useState('')
   const [addEmail, setAddEmail] = useState('')
   const [addRole, setAddRole] = useState('MEMBER')
@@ -215,46 +218,25 @@ export default function UsersPage(){
       <div style={{ marginBottom: 'clamp(16px, 4vw, 32px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
           <LanguageToggle />
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {isManager && (
-              <button
-                onClick={() => setShowAddMemberModal(true)}
-                style={{
-                  padding: '10px 16px',
-                  background: '#10B981',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: 'clamp(13px, 3.5vw, 14px)',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  color: 'white',
-                  minHeight: '40px',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                {t(lang, 'addMemberManually')}
-              </button>
-            )}
-            {isManager && (
-              <button
-                onClick={() => setShowInviteModal(true)}
-                style={{
-                  padding: '10px 16px',
-                  background: '#667eea',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: 'clamp(13px, 3.5vw, 14px)',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  color: 'white',
-                  minHeight: '40px',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                {t(lang, 'inviteMember')}
-              </button>
-            )}
-          </div>
+          {isManager && (
+            <button
+              onClick={() => setShowAddChooser(true)}
+              style={{
+                padding: '10px 16px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: 'clamp(13px, 3.5vw, 14px)',
+                fontWeight: '700',
+                cursor: 'pointer',
+                color: 'white',
+                minHeight: '40px',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              + {lang === 'he' ? 'הוסף חבר משפחה' : 'Add member'}
+            </button>
+          )}
         </div>
         <h1 style={{
           fontSize: 'clamp(24px, 6vw, 36px)',
@@ -406,72 +388,66 @@ export default function UsersPage(){
                   })}
                 </div>
 
-                {/* Actions */}
+                {/* Actions — collapsed behind a ⋯ menu */}
                 {isManager && (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                  }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
-                      onClick={() => openEditModal(user)}
+                      onClick={() => setMenuOpenFor(menuOpenFor === user.id ? null : user.id)}
+                      aria-label={lang === 'he' ? 'פעולות' : 'Actions'}
+                      aria-expanded={menuOpenFor === user.id}
                       style={{
-                        flex: 1,
-                        minHeight: '44px',
-                        padding: 'clamp(8px, 2vw, 10px)',
-                        background: '#F3F4F6',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: 'clamp(12px, 3vw, 14px)',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        color: '#374151',
+                        alignSelf: 'flex-end',
+                        minHeight: '36px', minWidth: '44px',
+                        padding: '6px 12px',
+                        background: menuOpenFor === user.id ? '#E5E7EB' : '#F3F4F6',
+                        border: 'none', borderRadius: '8px',
+                        fontSize: '18px', fontWeight: '800', lineHeight: 1,
+                        cursor: 'pointer', color: '#374151',
                         WebkitTapHighlightColor: 'transparent'
                       }}
                     >
-                      {t(lang, 'edit')}
+                      ⋯
                     </button>
-                    {!isCurrentUser && (
-                      <button
-                        onClick={() => removeUser(user.id)}
-                        style={{
-                          flex: 1,
-                          minHeight: '44px',
-                          padding: 'clamp(8px, 2vw, 10px)',
-                          background: '#FEE2E2',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: 'clamp(12px, 3vw, 14px)',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          color: '#991B1B',
-                          WebkitTapHighlightColor: 'transparent'
-                        }}
-                      >
-                        {t(lang, 'remove')}
-                      </button>
-                    )}
-                    </div>
-                    {!isCurrentUser && !isPending && (
-                      <button
-                        onClick={() => { setResetTarget(user); setResetPassword('') }}
-                        style={{
-                          width: '100%',
-                          minHeight: '44px',
-                          padding: 'clamp(8px, 2vw, 10px)',
-                          background: '#FFF7ED',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: 'clamp(12px, 3vw, 14px)',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          color: '#92400E',
-                          WebkitTapHighlightColor: 'transparent'
-                        }}
-                      >
-                        🔑 {t(lang, 'resetPassword')}
-                      </button>
+                    {menuOpenFor === user.id && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <button
+                          onClick={() => { setMenuOpenFor(null); openEditModal(user) }}
+                          style={{
+                            minHeight: '44px', padding: 'clamp(8px, 2vw, 10px)',
+                            background: '#F3F4F6', border: 'none', borderRadius: '8px',
+                            fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: '600',
+                            cursor: 'pointer', color: '#374151', WebkitTapHighlightColor: 'transparent'
+                          }}
+                        >
+                          ✏️ {t(lang, 'edit')}
+                        </button>
+                        {!isCurrentUser && !isPending && (
+                          <button
+                            onClick={() => { setMenuOpenFor(null); setResetTarget(user); setResetPassword('') }}
+                            style={{
+                              minHeight: '44px', padding: 'clamp(8px, 2vw, 10px)',
+                              background: '#FFF7ED', border: 'none', borderRadius: '8px',
+                              fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: '600',
+                              cursor: 'pointer', color: '#92400E', WebkitTapHighlightColor: 'transparent'
+                            }}
+                          >
+                            🔑 {t(lang, 'resetPassword')}
+                          </button>
+                        )}
+                        {!isCurrentUser && (
+                          <button
+                            onClick={() => { setMenuOpenFor(null); removeUser(user.id) }}
+                            style={{
+                              minHeight: '44px', padding: 'clamp(8px, 2vw, 10px)',
+                              background: '#FEE2E2', border: 'none', borderRadius: '8px',
+                              fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: '600',
+                              cursor: 'pointer', color: '#991B1B', WebkitTapHighlightColor: 'transparent'
+                            }}
+                          >
+                            🗑️ {t(lang, 'remove')}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -480,6 +456,36 @@ export default function UsersPage(){
           })}
         </div>
       )}
+
+      {/* Add member chooser */}
+      <Sheet open={showAddChooser} onClose={() => setShowAddChooser(false)} title={lang === 'he' ? 'הוסף חבר משפחה' : 'Add member'}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={() => { setShowAddChooser(false); setShowInviteModal(true) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--color-surface)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', textAlign: 'start', fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <span style={{ fontSize: 24 }} aria-hidden="true">✉️</span>
+            <span>
+              <span style={{ display: 'block', fontWeight: 700, fontSize: 'clamp(14px,3.8vw,15px)', color: 'var(--color-ink)' }}>{t(lang, 'inviteMember')}</span>
+              <span style={{ display: 'block', fontSize: 'clamp(11px,3vw,12.5px)', color: 'var(--color-muted)' }}>
+                {lang === 'he' ? 'שלחו קוד הזמנה — הם נרשמים בעצמם' : 'Send an invite code — they sign up themselves'}
+              </span>
+            </span>
+          </button>
+          <button
+            onClick={() => { setShowAddChooser(false); setShowAddMemberModal(true) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--color-surface)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', textAlign: 'start', fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent' }}
+          >
+            <span style={{ fontSize: 24 }} aria-hidden="true">👤</span>
+            <span>
+              <span style={{ display: 'block', fontWeight: 700, fontSize: 'clamp(14px,3.8vw,15px)', color: 'var(--color-ink)' }}>{t(lang, 'addMemberManually')}</span>
+              <span style={{ display: 'block', fontSize: 'clamp(11px,3vw,12.5px)', color: 'var(--color-muted)' }}>
+                {lang === 'he' ? 'צרו חשבון עבורם עכשיו (למשל לילדים)' : 'Create their account now (e.g. for kids)'}
+              </span>
+            </span>
+          </button>
+        </div>
+      </Sheet>
 
       {/* Delete Family button - ADMIN only */}
       {isAdmin && (

@@ -6,6 +6,9 @@ import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import PageHeader from '@/components/ui/PageHeader'
 import Card from '@/components/ui/Card'
+import WelcomeModal from '@/components/WelcomeModal'
+import WhatsNewModal from '@/components/WhatsNewModal'
+import { LATEST_VERSION, WHATS_NEW_STORAGE_KEY } from '@/lib/changelog'
 
 type HubLink = {
   path: string
@@ -47,6 +50,8 @@ export default function MorePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { lang, setLang } = useLang()
+  const [showHelp, setShowHelp] = React.useState(false)
+  const [showWhatsNew, setShowWhatsNew] = React.useState(false)
 
   React.useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/login')
@@ -104,6 +109,16 @@ export default function MorePage() {
             }
           />
           <HubRow
+            icon="❓"
+            label={lang === 'he' ? 'עזרה ומדריך' : 'Help & Guide'}
+            onClick={() => setShowHelp(true)}
+          />
+          <HubRow
+            icon="🎉"
+            label={t(lang, 'whatsNewOpen')}
+            onClick={() => setShowWhatsNew(true)}
+          />
+          <HubRow
             icon="🚪"
             label={t(lang, 'signOut')}
             onClick={async () => { await signOut({ redirect: false }); window.location.href = '/auth/login' }}
@@ -111,6 +126,14 @@ export default function MorePage() {
           />
         </Card>
       </div>
+
+      {showHelp && <WelcomeModal onClose={() => setShowHelp(false)} />}
+      {showWhatsNew && (
+        <WhatsNewModal onClose={() => {
+          localStorage.setItem(WHATS_NEW_STORAGE_KEY, LATEST_VERSION)
+          setShowWhatsNew(false)
+        }} />
+      )}
     </div>
   )
 }
