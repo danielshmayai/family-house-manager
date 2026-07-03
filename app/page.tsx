@@ -6,6 +6,7 @@ import IconDisplay from '@/components/IconDisplay'
 import LanguageToggle from '@/components/LanguageToggle'
 import WhatsNewModal from '@/components/WhatsNewModal'
 import { useLang } from '@/lib/language-context'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
 import { t } from '@/lib/i18n'
 import { compressImage } from '@/lib/compressImage'
 import { LATEST_VERSION, WHATS_NEW_STORAGE_KEY } from '@/lib/changelog'
@@ -54,6 +55,7 @@ export default function HomePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { lang } = useLang()
+  const { confirm, alertDialog } = useConfirm()
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [events, setEvents] = useState<EventItem[]>([])
@@ -189,7 +191,7 @@ export default function HomePage() {
       await loadData()
       showToastMessage(`+${activity.defaultPoints} points!`, activity.icon || '⭐')
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: lang === 'he' ? 'שגיאה' : 'Error', message: err.message })
     } finally {
       setCompleting(null)
     }
@@ -201,7 +203,8 @@ export default function HomePage() {
   }
 
   async function revertEvent(eventId: string, activityName: string, points: number) {
-    if (!confirm(t(lang, 'undoConfirm')(activityName, points))) return
+    const [confirmTitle, ...confirmRest] = t(lang, 'undoConfirm')(activityName, points).split('\n\n')
+    if (!(await confirm({ title: confirmTitle, message: confirmRest.join('\n\n'), danger: true }))) return
 
     setReverting(eventId)
     try {
@@ -215,7 +218,7 @@ export default function HomePage() {
       await loadData()
       showToastMessage(t(lang, 'revertedMsg')(points), '↩️')
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: lang === 'he' ? 'שגיאה' : 'Error', message: err.message })
     } finally {
       setReverting(null)
     }

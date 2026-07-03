@@ -6,6 +6,7 @@ import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import LanguageToggle from '@/components/LanguageToggle'
 import Sheet from '@/components/ui/Sheet'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
 
 type User = {
   id: string
@@ -21,6 +22,8 @@ export default function UsersPage(){
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const { lang } = useLang()
+  const { confirm, alertDialog } = useConfirm()
+  const errorTitle = lang === 'he' ? 'שגיאה' : 'Error'
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -79,12 +82,12 @@ export default function UsersPage(){
       setShowEditModal(false)
       setEditingUser(null)
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     }
   }
 
   async function removeUser(userId: string) {
-    if (!confirm(t(lang, 'removeConfirm'))) return
+    if (!(await confirm({ title: t(lang, 'removeConfirm'), danger: true }))) return
 
     try {
       const res = await fetch('/api/users', {
@@ -96,7 +99,7 @@ export default function UsersPage(){
       if (!res.ok) throw new Error('Failed to remove user')
       await loadUsers()
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     }
   }
 
@@ -121,7 +124,7 @@ export default function UsersPage(){
       setInviteCode(data.code)
       setInviteEmail('')
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     } finally {
       setInviteLoading(false)
     }
@@ -142,9 +145,9 @@ export default function UsersPage(){
       }
       setResetTarget(null)
       setResetPassword('')
-      alert(t(lang, 'passwordResetSuccess'))
+      alertDialog({ title: t(lang, 'passwordResetSuccess') })
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     } finally {
       setResetLoading(false)
     }
@@ -182,20 +185,20 @@ export default function UsersPage(){
 
   async function deleteFamily() {
     const confirmMsg = t(lang, 'deleteFamilyConfirm') as string
-    if (!confirm(confirmMsg)) return
+    if (!(await confirm({ title: confirmMsg, danger: true }))) return
     setDeletingFamily(true)
     try {
       const res = await fetch('/api/households', { method: 'DELETE' })
       if (!res.ok) {
         const d = await res.json()
-        alert(d.error || 'Error deleting family')
+        alertDialog({ title: errorTitle, message: d.error || 'Error deleting family' })
         setDeletingFamily(false)
         return
       }
       await signOut({ redirect: false })
       window.location.href = '/auth/register'
     } catch (err: any) {
-      alert('Error: ' + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
       setDeletingFamily(false)
     }
   }
@@ -739,7 +742,7 @@ export default function UsersPage(){
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(setupLink)
-                      alert(t(lang, 'linkCopied'))
+                      alertDialog({ title: t(lang, 'linkCopied') })
                     }}
                     style={{
                       width: '100%', marginTop: '12px', padding: '10px',
@@ -888,7 +891,7 @@ export default function UsersPage(){
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(inviteCode)
-                      alert(t(lang, 'codeCopied'))
+                      alertDialog({ title: t(lang, 'codeCopied') })
                     }}
                     style={{
                       width: '100%',

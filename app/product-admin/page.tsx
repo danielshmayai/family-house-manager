@@ -30,10 +30,12 @@ type Household = {
   revokeToken: string | null
   members: HouseholdMember[]
 }
+import { useConfirm } from '@/components/ui/ConfirmProvider'
 
 export default function ProductAdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { confirm } = useConfirm()
   const [pending, setPending] = useState<PendingUser[]>([])
   const [households, setHouseholds] = useState<Household[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,7 +104,12 @@ export default function ProductAdminPage() {
   }
 
   async function handleDelete(household: Household) {
-    if (!confirm(`למחוק את משפחת "${household.name}" ואת כל הנתונים שלה?\nלא ניתן לבטל פעולה זו.`)) return
+    const confirmed = await confirm({
+      title: `למחוק את משפחת "${household.name}"?`,
+      message: 'כל הנתונים שלה יימחקו. לא ניתן לבטל פעולה זו.',
+      danger: true,
+    })
+    if (!confirmed) return
     setDeletingId(household.id)
     try {
       const res = await fetch('/api/admin/families', {

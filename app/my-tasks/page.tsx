@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
 
 type Activity = {
   id: string
@@ -55,6 +56,7 @@ export default function MyTasksPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { lang } = useLang()
+  const { confirm } = useConfirm()
   const sessionUser = session?.user as any
   const userId = sessionUser?.id
   const householdId = sessionUser?.householdId
@@ -156,7 +158,7 @@ export default function MyTasksPage() {
     const confirmMsg = isSelf
       ? t(lang, 'deleteTaskConfirm')(task.title)
       : t(lang, 'cancelAssignmentConfirm')(task.title)
-    if (!confirm(confirmMsg)) return
+    if (!(await confirm({ title: confirmMsg, danger: true }))) return
     setDeleting(task.id)
     try {
       const res = await fetch(`/api/my-tasks?id=${task.id}`, { method: 'DELETE' })
@@ -796,12 +798,14 @@ function TaskSection({
                       <button
                         onClick={() => onDelete(task)}
                         disabled={!!deleting}
+                        aria-label={isSelf ? 'Delete task' : 'Cancel assignment'}
                         style={{
                           flexShrink: 0,
-                          background: 'none', border: 'none',
+                          background: 'var(--color-danger-bg)', border: 'none',
+                          borderRadius: '6px',
                           cursor: deleting ? 'not-allowed' : 'pointer',
-                          fontSize: '14px', color: '#D1D5DB',
-                          padding: '0 2px',
+                          fontSize: '13px', color: 'var(--color-danger)',
+                          padding: '4px 8px', minWidth: '28px', minHeight: '28px',
                           WebkitTapHighlightColor: 'transparent',
                           lineHeight: 1
                         }}

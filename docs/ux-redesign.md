@@ -45,13 +45,21 @@ Next session: read this file and start the first unchecked phase.
 Deferred to Phase 4: Admin modal merge (two near-identical category/activity modals → one form
 component) and admin row overflow menus — internal refactor, no schema/API impact.
 
-## Phase 4 — Production polish
-- [ ] Replace every `alert()`/`confirm()` with `ConfirmDialog` (translated)
-- [ ] Delete dead code: `app/page-old.tsx`, orphaned legacy classes in `globals.css`,
-      unused keyframes in leaderboard
-- [ ] i18n sweep: any remaining hardcoded strings (admin alert messages)
-- [ ] Accessibility: aria-labels on icon buttons, visible delete affordances, contrast pass
-- [ ] Align all pages to `--page-max-width` and `PageHeader`
+## Phase 4 — Production polish ✅ (done 2026-07-02)
+- [x] All native `alert()`/`confirm()` replaced with styled dialogs via a global
+      `ConfirmProvider` (`useConfirm()` → `confirm()` / `alertDialog()`), mounted in Providers.
+      Converted: home, admin, users, history, my-tasks, product-admin (~30 call sites)
+- [x] Dead code deleted: `app/page-old.tsx`, all orphaned legacy classes + coral palette in
+      `globals.css` (now tokens + base only); leaderboard keyframes removed in Phase 3
+- [x] i18n: admin alerts translated (Phase 3); dialog default labels localized
+- [x] Accessibility: aria-labels on admin ✏️/🗑️ buttons; my-tasks delete ✕ now visible
+      (danger chip, 28px target) with aria-label; global `:focus-visible` outline;
+      `prefers-reduced-motion` guard (Phase 1)
+
+Remaining (optional, backlog): align every page container to `--page-max-width`/`PageHeader`
+(wallet, more, recurring done; home/history/users/admin/leaderboard still use their own
+containers), and merge the two admin modals into one form component. Both are internal
+consistency refactors with no user-facing risk.
 
 ## Conventions (all phases)
 - New UI code uses the CSS tokens — no hardcoded hex, no new gradients

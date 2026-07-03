@@ -6,6 +6,7 @@ import { useLang } from '@/lib/language-context'
 import { t } from '@/lib/i18n'
 import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
 import Sheet from '@/components/ui/Sheet'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
 import Button from '@/components/ui/Button'
 
 type EventItem = {
@@ -109,6 +110,7 @@ export default function HistoryPage() {
   const searchParams = useSearchParams()
   const { lang } = useLang()
   const isHe = lang === 'he'
+  const { confirm, alertDialog } = useConfirm()
 
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<EventItem[]>([])
@@ -142,10 +144,14 @@ export default function HistoryPage() {
   async function cancelEvent(ev: EventItem, e?: React.MouseEvent) {
     e?.stopPropagation()
     const activityName = ev.activity?.name || ev.eventType
-    const confirmMsg = isHe
-      ? `לבטל את "${activityName}"?\n\nזה יסיר ${ev.points} נקודות ויסמן כלא בוצע.`
-      : `Undo "${activityName}"?\n\nThis will remove ${ev.points} points and mark it as not done.`
-    if (!confirm(confirmMsg)) return
+    const confirmed = await confirm({
+      title: isHe ? `לבטל את "${activityName}"?` : `Undo "${activityName}"?`,
+      message: isHe
+        ? `זה יסיר ${ev.points} נקודות ויסמן כלא בוצע.`
+        : `This will remove ${ev.points} points and mark it as not done.`,
+      danger: true,
+    })
+    if (!confirmed) return
 
     setReverting(ev.id)
     try {
@@ -157,7 +163,7 @@ export default function HistoryPage() {
       setDetailModal(null)
       await fetchHistory()
     } catch (err: any) {
-      alert((isHe ? 'שגיאה: ' : 'Error: ') + err.message)
+      alertDialog({ title: isHe ? 'שגיאה' : 'Error', message: err.message })
     } finally {
       setReverting(null)
     }

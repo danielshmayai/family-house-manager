@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import IconDisplay, { isImageIcon } from '@/components/IconDisplay'
 import { compressImage } from '@/lib/compressImage'
 import { useLang } from '@/lib/language-context'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
 import { t } from '@/lib/i18n'
 import LanguageToggle from '@/components/LanguageToggle'
 
@@ -40,6 +41,8 @@ export default function Admin() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const { lang } = useLang()
+  const { confirm, alertDialog } = useConfirm()
+  const errorTitle = lang === 'he' ? 'שגיאה' : 'Error'
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showActivityModal, setShowActivityModal] = useState(false)
@@ -78,7 +81,7 @@ export default function Admin() {
   }
 
   async function saveCategory() {
-    if (!editingCategory?.name) return alert(t(lang, 'nameRequired2'))
+    if (!editingCategory?.name) return alertDialog({ title: t(lang, 'nameRequired2') })
 
     try {
       const method = editingCategory.id ? 'PUT' : 'POST'
@@ -98,14 +101,14 @@ export default function Admin() {
       setShowCategoryModal(false)
       setEditingCategory(null)
     } catch (err: any) {
-      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     }
   }
 
   async function deleteCategory(id: string) {
     const cat = categories.find(c => c.id === id)
     const actCount = cat?.activities?.length || 0
-    if (!confirm(t(lang, 'deleteCategoryConfirm')(cat?.name || '', actCount))) return
+    if (!(await confirm({ title: t(lang, 'deleteCategoryConfirm')(cat?.name || '', actCount), danger: true }))) return
 
     try {
       const res = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' })
@@ -116,16 +119,16 @@ export default function Admin() {
             ? `נמחק! (הוסרו ${result.cascaded.activitiesDeleted} פעילויות ו-${result.cascaded.eventsDeleted} אירועים)`
             : `Deleted! (${result.cascaded.activitiesDeleted} activities, ${result.cascaded.eventsDeleted} events removed)`)
         : (lang === 'he' ? 'נמחק!' : 'Deleted!')
-      alert(info)
+      alertDialog({ title: info })
       await loadCategories()
     } catch (err: any) {
-      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     }
   }
 
   async function saveActivity() {
     if (!editingActivity?.name || !editingActivity?.categoryId) {
-      return alert(t(lang, 'nameAndCatRequired'))
+      return alertDialog({ title: t(lang, 'nameAndCatRequired') })
     }
 
     try {
@@ -145,13 +148,13 @@ export default function Admin() {
       setShowActivityModal(false)
       setEditingActivity(null)
     } catch (err: any) {
-      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     }
   }
 
   async function deleteActivity(id: string) {
     const activity = categories.flatMap(c => c.activities || []).find(a => a.id === id)
-    if (!confirm(t(lang, 'deleteActivityConfirm')(activity?.name || ''))) return
+    if (!(await confirm({ title: t(lang, 'deleteActivityConfirm')(activity?.name || ''), danger: true }))) return
 
     try {
       const res = await fetch(`/api/activities?id=${id}`, { method: 'DELETE' })
@@ -162,17 +165,17 @@ export default function Admin() {
             ? `נמחק! (הוסרו ${result.cascaded.eventsDeleted} אירועים)`
             : `Deleted! (${result.cascaded.eventsDeleted} events removed)`)
         : (lang === 'he' ? 'נמחק!' : 'Deleted!')
-      alert(info)
+      alertDialog({ title: info })
       await loadCategories()
     } catch (err: any) {
-      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     }
   }
 
   const [resetting, setResetting] = useState(false)
 
   async function resetToDefaults() {
-    if (!confirm(t(lang, 'resetConfirm'))) return
+    if (!(await confirm({ title: t(lang, 'resetConfirm'), danger: true }))) return
 
     setResetting(true)
     try {
@@ -186,9 +189,9 @@ export default function Admin() {
         throw new Error(err.error || 'Failed to reset')
       }
       await loadCategories()
-      alert(t(lang, 'resetSuccess'))
+      alertDialog({ title: t(lang, 'resetSuccess') })
     } catch (err: any) {
-      alert((lang === 'he' ? 'שגיאה: ' : 'Error: ') + err.message)
+      alertDialog({ title: errorTitle, message: err.message })
     } finally {
       setResetting(false)
     }
@@ -230,7 +233,7 @@ export default function Admin() {
 
   async function handleImageUpload(file: File, target: 'category' | 'activity') {
     if (!file.type.startsWith('image/')) {
-      alert(lang === 'he' ? 'יש לבחור קובץ תמונה (PNG, JPG, GIF, SVG, WebP)' : 'Please select an image file (PNG, JPG, GIF, SVG, WebP)')
+      alertDialog({ title: lang === 'he' ? 'יש לבחור קובץ תמונה (PNG, JPG, GIF, SVG, WebP)' : 'Please select an image file (PNG, JPG, GIF, SVG, WebP)' })
       return
     }
     const dataUri = await compressImage(file)
@@ -421,12 +424,14 @@ export default function Admin() {
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                   <button
                     onClick={() => openCategoryModal(category)}
+                    aria-label={t(lang, 'edit')}
                     style={{ padding: '8px 12px', minHeight: '36px', minWidth: '36px', background: '#F3F4F6', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: 'clamp(12px, 3vw, 14px)', WebkitTapHighlightColor: 'transparent' }}
                   >
                     ✏️
                   </button>
                   <button
                     onClick={() => deleteCategory(category.id)}
+                    aria-label={t(lang, 'remove')}
                     style={{ padding: '8px 12px', minHeight: '36px', minWidth: '36px', background: '#FEE2E2', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: 'clamp(12px, 3vw, 14px)', WebkitTapHighlightColor: 'transparent' }}
                   >
                     🗑️
@@ -487,12 +492,14 @@ export default function Admin() {
                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                           <button
                             onClick={() => openActivityModal(category.id, activity)}
+                            aria-label={t(lang, 'edit')}
                             style={{ padding: '8px', minHeight: '32px', minWidth: '32px', background: 'white', border: '1px solid #E5E7EB', borderRadius: '6px', cursor: 'pointer', fontSize: 'clamp(11px, 2.5vw, 12px)', WebkitTapHighlightColor: 'transparent' }}
                           >
                             ✏️
                           </button>
                           <button
                             onClick={() => deleteActivity(activity.id)}
+                            aria-label={t(lang, 'remove')}
                             style={{ padding: '8px', minHeight: '32px', minWidth: '32px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '6px', cursor: 'pointer', fontSize: 'clamp(11px, 2.5vw, 12px)', WebkitTapHighlightColor: 'transparent' }}
                           >
                             🗑️

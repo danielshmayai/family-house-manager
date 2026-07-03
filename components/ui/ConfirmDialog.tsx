@@ -46,7 +46,7 @@ export default function ConfirmDialog({
           </p>
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: message ? 0 : 16 }}>
-          <Button variant="secondary" onClick={onCancel}>{cancelLabel}</Button>
+          {cancelLabel && <Button variant="secondary" onClick={onCancel}>{cancelLabel}</Button>}
           <Button
             variant={danger ? 'danger' : 'primary'}
             onClick={onConfirm}
